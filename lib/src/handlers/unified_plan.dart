@@ -748,19 +748,19 @@ class UnifiedPlan extends HandlerInterface {
       print('🔍 DEBUG: SDP first 200 chars: ${sdpString.substring(0, sdpString.length > 200 ? 200 : sdpString.length)}');
     }
     
-    RTCSessionDescription? answer;
+    // ✅ Create RTCSessionDescription
+    RTCSessionDescription answer = RTCSessionDescription(sdpString, 'answer');
+    
+    // ✅ DEBUG: Verify the SDP is actually set in the object
+    print('🔍 DEBUG: answer.sdp == null? ${answer.sdp == null}');
+    print('🔍 DEBUG: answer.sdp length = ${answer.sdp?.length ?? 0}');
+    print('🔍 DEBUG: answer.type = ${answer.type}');
+    
     try {
-      answer = RTCSessionDescription(sdpString, 'answer');
-      print('✅ DEBUG: RTCSessionDescription created successfully');
-    } catch (e) {
-      print('❌ DEBUG: RTCSessionDescription creation failed: $e');
-      rethrow;
-    }
-
-    try {
-      print('🔍 DEBUG: Calling setRemoteDescription with answer.sdp=${answer.sdp?.substring(0, 50)}...');
       await _pc!.setRemoteDescription(answer);
+      print('✅ setRemoteDescription successful!');
     } catch (e) {
+      print('❌ setRemoteDescription failed, trying fallback: $e');
       // Fallback to capability-based recomputation if setRemoteDescription fails
       sendingRtpParameters = Ortc.getSendingRtpParameters(
           RTCRtpMediaTypeExtension.fromString(options.track.kind!), _extendedRtpCapabilities);
