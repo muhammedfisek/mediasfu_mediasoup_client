@@ -241,6 +241,9 @@ class UnifiedPlan extends HandlerInterface {
       print('⚠️ This is a WORKAROUND for flutter_webrtc iOS bug');
       print('⚠️ Will manually add transceiver instead of SDP exchange...');
       
+      // Create MediaStream first (needed for early return)
+      MediaStream stream = await createLocalMediaStream('remote-${options.trackId}');
+      
       // Manually add transceiver since SDP exchange is broken on iOS
       RTCRtpTransceiver transceiver = await _pc!.addTransceiver(
         kind: options.kind,
@@ -249,6 +252,7 @@ class UnifiedPlan extends HandlerInterface {
         ),
       );
       
+      stream.addTrack(transceiver.receiver.track!);
       print('✅ Transceiver manually added: ${transceiver.mid}');
       
       // 🔍 DEBUG: Log RTP parameters
@@ -394,11 +398,8 @@ a=ssrc:$ssrc cname:$cname
       
       print('✅ NUCLEAR OPTION (RECEIVE) completed, returning result...');
       
-      // Create a MediaStream for the consumer
-      MediaStream stream = await createLocalMediaStream('remote-${options.trackId}');
-      stream.addTrack(transceiver.receiver.track!);
-      
       // Return HandlerReceiveResult (Transport layer will create Consumer)
+      // Note: stream was already created at the beginning of NUCLEAR OPTION block
       return HandlerReceiveResult(
         localId: localId,
         track: transceiver.receiver.track!,
