@@ -9,6 +9,7 @@ import 'package:mediasfu_mediasoup_client/src/sdp_object.dart';
 import 'package:mediasfu_mediasoup_client/src/transport.dart';
 import 'package:mediasfu_mediasoup_client/src/sctp_parameters.dart';
 import 'package:mediasfu_mediasoup_client/src/rtp_parameters.dart';
+import 'package:mediasfu_mediasoup_client/src/consumer.dart';
 import 'package:mediasfu_mediasoup_client/src/handlers/handler_interface.dart';
 import 'package:mediasfu_mediasoup_client/src/handlers/sdp/common_utils.dart';
 import 'package:mediasfu_mediasoup_client/src/handlers/sdp/media_section.dart';
@@ -238,8 +239,45 @@ class UnifiedPlan extends HandlerInterface {
       print('🔥🔥🔥 NUCLEAR OPTION ACTIVATED (RECEIVE) 🔥🔥🔥');
       print('⚠️ setRemoteDescription failed on iOS receive transport');
       print('⚠️ This is a WORKAROUND for flutter_webrtc iOS bug');
-      print('⚠️ Attempting to continue without remote SDP...');
-      setRemoteSuccess = true; // Pretend it worked
+      print('⚠️ Will manually add transceiver instead of SDP exchange...');
+      
+      // Manually add transceiver since SDP exchange is broken on iOS
+      RTCRtpTransceiver transceiver = await _pc!.addTransceiver(
+        kind: options.kind,
+        init: RTCRtpTransceiverInit(
+          direction: TransceiverDirection.RecvOnly,
+        ),
+      );
+      
+      print('✅ Transceiver manually added: ${transceiver.mid}');
+      
+      // Store in the map
+      _mapMidTransceiver[localId] = transceiver;
+      
+      // Setup transport if needed (for DTLS)
+      if (!_transportReady) {
+        // Create a minimal SDP object for _setupTransport
+        SdpObject minimalSdp = SdpObject();
+        minimalSdp.media = [];
+        await _setupTransport(
+          localDtlsRole: DtlsRole.client,
+          localSdpObject: minimalSdp,
+        );
+      }
+      
+      print('✅ NUCLEAR OPTION (RECEIVE) completed, returning consumer...');
+      
+      // Return consumer directly
+      return Consumer(
+        id: options.id,
+        localId: localId,
+        producerId: options.producerId,
+        closed: false,
+        rtpParameters: options.rtpParameters,
+        track: transceiver.receiver.track,
+        rtpReceiver: transceiver.receiver,
+        appData: options.appData,
+      );
     }
 
     RTCSessionDescription answer = await _pc!.createAnswer({});
