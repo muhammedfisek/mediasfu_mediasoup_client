@@ -758,14 +758,28 @@ class UnifiedPlan extends HandlerInterface {
     print('🔍 DEBUG: FULL SDP CONTENT:\n$sdpString');
     print('🔍 DEBUG: SDP ends here ^^^');
     
+    // ✅ CRITICAL FIX: Clean SDP - remove trailing spaces from lines (iOS SDP parser bug)
+    print('🔧 Cleaning SDP: removing trailing whitespaces...');
+    String cleanedSdp = sdpString.split('\n')
+        .map((line) => line.trimRight())  // Remove trailing whitespace from each line
+        .join('\n');
+    
+    // ✅ Verify cleaning worked
+    int originalLength = sdpString.length;
+    int cleanedLength = cleanedSdp.length;
+    if (originalLength != cleanedLength) {
+      print('✅ SDP cleaned: removed ${originalLength - cleanedLength} trailing spaces');
+    } else {
+      print('ℹ️ No trailing spaces found in SDP');
+    }
+    
     // ✅ WORKAROUND: Keep strong reference to prevent GC and use delayed call
     RTCSessionDescription? answer;
     bool setRemoteSuccess = false;
     
-    // Create RTCSessionDescription and keep a strong reference
-    print('🔧 Creating RTCSessionDescription with strong reference...');
-    final String sdpCopy = String.fromCharCodes(sdpString.codeUnits); // Deep copy
-    answer = RTCSessionDescription(sdpCopy, 'answer');
+    // Create RTCSessionDescription with cleaned SDP
+    print('🔧 Creating RTCSessionDescription with cleaned SDP...');
+    answer = RTCSessionDescription(cleanedSdp, 'answer');
     
     // Verify it's created correctly
     print('✅ RTCSessionDescription created:');
@@ -773,28 +787,15 @@ class UnifiedPlan extends HandlerInterface {
     print('   - answer.sdp length = ${answer.sdp?.length ?? 0}');
     print('   - answer.type = ${answer.type}');
     
-    // Method 1: Try with a small delay (iOS native bridge race condition workaround)
-    print('🔧 Method 1: Trying setRemoteDescription with 50ms delay...');
+    // Try setRemoteDescription with cleaned SDP
+    print('🔧 Trying setRemoteDescription with cleaned SDP...');
     try {
-      await Future.delayed(const Duration(milliseconds: 50));
       await _pc!.setRemoteDescription(answer);
-      print('✅ setRemoteDescription successful with Method 1!');
+      print('✅✅✅ setRemoteDescription SUCCESSFUL! Bug fixed with SDP cleaning! ✅✅✅');
       setRemoteSuccess = true;
     } catch (e) {
-      print('❌ Method 1 (with delay) failed: $e');
-    }
-    
-    // Method 2: Try without delay but recreate the object
-    if (!setRemoteSuccess) {
-      print('🔧 Method 2: Recreating RTCSessionDescription and trying immediately...');
-      try {
-        answer = RTCSessionDescription(sdpCopy, 'answer');
-        await _pc!.setRemoteDescription(answer);
-        print('✅ setRemoteDescription successful with Method 2!');
-        setRemoteSuccess = true;
-      } catch (e) {
-        print('❌ Method 2 (immediate) failed: $e');
-      }
+      print('❌ setRemoteDescription with cleaned SDP failed: $e');
+      print('   This is unexpected - the trailing space fix did not work');
     }
     
     // Method 3: Fallback to capability-based recomputation
@@ -828,6 +829,13 @@ class UnifiedPlan extends HandlerInterface {
       // Create new RTCSessionDescription with fallback SDP
       String fallbackSdp = _remoteSdp.getSdp();
       print('🔧 Fallback: Generated new SDP (length=${fallbackSdp.length})');
+      
+      // Clean fallback SDP too
+      fallbackSdp = fallbackSdp.split('\n')
+          .map((line) => line.trimRight())
+          .join('\n');
+      print('🔧 Fallback: SDP cleaned (new length=${fallbackSdp.length})');
+      
       answer = RTCSessionDescription(fallbackSdp, 'answer');
       print('🔧 Fallback: Trying setRemoteDescription with recomputed SDP...');
       await _pc!.setRemoteDescription(answer);
