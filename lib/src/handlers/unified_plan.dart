@@ -254,9 +254,9 @@ class UnifiedPlan extends HandlerInterface {
       // Store in the map
       _mapMidTransceiver[localId] = transceiver;
       
-      // ⚠️ Mark as ready since we'll manually trigger connect from Transport layer
-      _transportReady = true;
-      print('⚠️ _transportReady = true (will manually trigger DTLS connect)');
+      // ⚠️ Mark as NOT ready so Transport layer triggers 'connect' event
+      _transportReady = false;
+      print('⚠️ _transportReady = false (Transport will trigger connect event)');
       
       print('✅ NUCLEAR OPTION (RECEIVE) completed, returning result...');
       
