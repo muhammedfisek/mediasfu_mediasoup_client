@@ -254,11 +254,9 @@ class UnifiedPlan extends HandlerInterface {
       // Store in the map
       _mapMidTransceiver[localId] = transceiver;
       
-      // Mark transport as ready (DTLS already established via connectConsumerTransport)
-      if (!_transportReady) {
-        print('⚠️ Marking transport as ready (skipping SDP-based DTLS setup)');
-        _transportReady = true;
-      }
+      // ⚠️ Keep _transportReady = false so Transport triggers 'connect' event
+      // DTLS will be established via connectConsumerTransport callback
+      print('⚠️ Keeping _transportReady = false to allow Transport connect flow');
       
       print('✅ NUCLEAR OPTION (RECEIVE) completed, returning result...');
       
