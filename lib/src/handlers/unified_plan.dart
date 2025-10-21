@@ -748,6 +748,16 @@ class UnifiedPlan extends HandlerInterface {
       print('🔍 DEBUG: SDP first 200 chars: ${sdpString.substring(0, sdpString.length > 200 ? 200 : sdpString.length)}');
     }
     
+    // ✅ DEBUG: Check PeerConnection state
+    print('🔍 DEBUG: _pc state before setRemoteDescription:');
+    print('   - signalingState: ${_pc!.signalingState}');
+    print('   - iceConnectionState: ${_pc!.iceConnectionState}');
+    print('   - connectionState: ${_pc!.connectionState}');
+    
+    // ✅ DEBUG: Log FULL SDP content
+    print('🔍 DEBUG: FULL SDP CONTENT:\n$sdpString');
+    print('🔍 DEBUG: SDP ends here ^^^');
+    
     // ✅ Create RTCSessionDescription
     RTCSessionDescription answer = RTCSessionDescription(sdpString, 'answer');
     
@@ -755,6 +765,14 @@ class UnifiedPlan extends HandlerInterface {
     print('🔍 DEBUG: answer.sdp == null? ${answer.sdp == null}');
     print('🔍 DEBUG: answer.sdp length = ${answer.sdp?.length ?? 0}');
     print('🔍 DEBUG: answer.type = ${answer.type}');
+    
+    // ✅ DEBUG: Try to access answer.toMap() to see what's being sent to native
+    try {
+      final answerMap = answer.toMap();
+      print('🔍 DEBUG: answer.toMap() = $answerMap');
+    } catch (e) {
+      print('❌ DEBUG: answer.toMap() failed: $e');
+    }
     
     try {
       await _pc!.setRemoteDescription(answer);
