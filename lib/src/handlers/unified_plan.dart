@@ -800,17 +800,26 @@ class UnifiedPlan extends HandlerInterface {
 
       _remoteSdp.sendSctpAssociation(offerMediaObject!);
 
-      RTCSessionDescription answer = RTCSessionDescription(_remoteSdp.getSdp(), 'answer');
+      // RTCSessionDescription answer = RTCSessionDescription(_remoteSdp.getSdp(), 'answer');
 
       // // 'sendDataChannel() | calling pc.setRemoteDescription() [answer:${answer.toMap()}]');
 
-      if (answer != null) {
-        await _pc!.setRemoteDescription(answer);
-      } else {
-        print('⚠️ Skipping setRemoteDescription: answer is null');
-      }
+      //  if (answer != null) {
+      //    await _pc!.setRemoteDescription(answer);
+      //  } else {
+      //    print('⚠️ Skipping setRemoteDescription: answer is null');
+      //  }
 
       _hasDataChannelMediaSection = true;
+      return HandlerSendDataChannelResult(
+        dataChannel: dataChannel,
+        sctpStreamParameters: SctpStreamParameters(
+          streamId: initOptions.id,
+          ordered: initOptions.ordered,
+          maxPacketLifeTime: initOptions.maxRetransmitTime,
+          maxRetransmits: initOptions.maxRetransmits,
+        ),
+      );
     }
 
     SctpStreamParameters sctpStreamParameters = SctpStreamParameters(
@@ -899,7 +908,7 @@ class UnifiedPlan extends HandlerInterface {
 
     // 'stopReceiving() | calling pc.setRemoteDescription() [offer:${offer.toMap()}');
 
-    await _pc!.setRemoteDescription(offer);
+    // if (offer.sdp!.isNotEmpty) await _pc!.setRemoteDescription(offer);
 
     RTCSessionDescription answer = await _pc!.createAnswer({});
 
