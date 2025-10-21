@@ -258,52 +258,81 @@ class UnifiedPlan extends HandlerInterface {
       print('   - ssrc: ${options.rtpParameters.encodings.firstOrNull?.ssrc}');
       print('   - cname: ${options.rtpParameters.rtcp?.cname}');
       
-      // 🔥 FAKE SDP WORKAROUND for iOS bug
-      // Create minimal SDP with real SSRC and codec info to bypass iOS native bug
-      print('🔥 FAKE SDP: Creating minimal SDP with real RTP parameters...');
+      // 🔥 STEP 1: Create local offer first (to get DTLS fingerprint and correct state)
+      print('🔥 FAKE SDP Step 1: Creating local offer...');
+      RTCSessionDescription localOffer;
+      String? dtlsFingerprint;
+      
       try {
-        // Extract real parameters
-        final ssrc = options.rtpParameters.encodings.firstOrNull?.ssrc ?? 111111;
-        final cname = options.rtpParameters.rtcp?.cname ?? 'mediasoup';
-        final codec = options.rtpParameters.codecs.firstOrNull;
-        final codecName = codec?.mimeType.split('/').lastOrNull ?? 'H264';
-        final payloadType = codec?.payloadType ?? 98;
-        final clockRate = codec?.clockRate ?? 90000;
+        localOffer = await _pc!.createOffer({});
+        await _pc!.setLocalDescription(localOffer);
+        print('   ✅ Local offer created (state: have-local-offer)');
         
-        print('   - SSRC: $ssrc');
-        print('   - CNAME: $cname');
-        print('   - Codec: $codecName (PT: $payloadType, Clock: $clockRate)');
-        
-        // Build minimal SDP
-        final mediaType = options.kind == 'video' ? 'video' : 'audio';
-        final fakeSdp = '''v=0
+        // Extract DTLS fingerprint from local SDP
+        final fingerprintMatch = RegExp(r'a=fingerprint:(\S+ \S+)').firstMatch(localOffer.sdp ?? '');
+        if (fingerprintMatch != null) {
+          dtlsFingerprint = fingerprintMatch.group(1);
+          print('   ✅ DTLS fingerprint extracted: $dtlsFingerprint');
+        } else {
+          print('   ⚠️ Could not extract DTLS fingerprint from local SDP');
+        }
+      } catch (e) {
+        print('   ❌ Failed to create local offer: $e');
+        print('   ⚠️ Cannot proceed with fake SDP without local offer');
+        // Store in the map and return
+        _mapMidTransceiver[localId] = transceiver;
+        return HandlerReceiveResult(
+          localId: localId,
+          rtpReceiver: transceiver.receiver,
+          track: transceiver.receiver.track!,
+          stream: stream,
+        );
+      }
+      
+      // 🔥 STEP 2: Now create fake remote SDP with real RTP parameters + DTLS fingerprint
+      if (dtlsFingerprint != null) {
+        print('🔥 FAKE SDP Step 2: Creating minimal remote SDP...');
+        try {
+          // Extract real RTP parameters
+          final ssrc = options.rtpParameters.encodings.firstOrNull?.ssrc ?? 111111;
+          final cname = options.rtpParameters.rtcp?.cname ?? 'mediasoup';
+          final codec = options.rtpParameters.codecs.firstOrNull;
+          final codecName = codec?.mimeType.split('/').lastOrNull ?? 'H264';
+          final payloadType = codec?.payloadType ?? 98;
+          final clockRate = codec?.clockRate ?? 90000;
+          
+          print('   - SSRC: $ssrc');
+          print('   - CNAME: $cname');
+          print('   - Codec: $codecName (PT: $payloadType, Clock: $clockRate)');
+          print('   - DTLS Fingerprint: $dtlsFingerprint');
+          
+          // Build minimal SDP with DTLS fingerprint
+          final mediaType = options.kind == 'video' ? 'video' : 'audio';
+          final fakeSdp = '''v=0
 o=- 0 0 IN IP4 127.0.0.1
 s=-
 t=0 0
+a=fingerprint:$dtlsFingerprint
+a=setup:actpass
 m=$mediaType 9 UDP/TLS/RTP/SAVPF $payloadType
 c=IN IP4 0.0.0.0
 a=rtcp-mux
-a=recvonly
+a=sendonly
 a=rtpmap:$payloadType $codecName/$clockRate
 a=ssrc:$ssrc cname:$cname
 ''';
-        
-        print('   - Fake SDP created (${fakeSdp.length} bytes)');
-        
-        RTCSessionDescription fakeSdpDesc = RTCSessionDescription(fakeSdp, 'answer');
-        await _pc!.setRemoteDescription(fakeSdpDesc);
-        print('   ✅ FAKE SDP set successfully! Native layer should now process RTP packets.');
-      } catch (e) {
-        print('   ❌ FAKE SDP also failed: $e');
-        print('   ⚠️ Continuing without remote SDP (last resort)');
-        // Still try to create local offer for DTLS
-        try {
-          RTCSessionDescription offer = await _pc!.createOffer({});
-          await _pc!.setLocalDescription(offer);
-          print('   ⚠️ Local offer set as final fallback');
-        } catch (e2) {
-          print('   ❌ Even local offer failed: $e2');
+          
+          print('   - Fake SDP created (${fakeSdp.length} bytes)');
+          
+          RTCSessionDescription fakeSdpDesc = RTCSessionDescription(fakeSdp, 'answer');
+          await _pc!.setRemoteDescription(fakeSdpDesc);
+          print('   ✅✅✅ FAKE SDP set successfully! Native layer should now process RTP packets.');
+        } catch (e) {
+          print('   ❌ FAKE SDP failed: $e');
+          print('   ⚠️ Continuing with local offer only (RTP packets may not be processed)');
         }
+      } else {
+        print('   ⚠️ Skipping fake SDP (no DTLS fingerprint available)');
       }
       
       // Store in the map
@@ -347,8 +376,8 @@ a=ssrc:$ssrc cname:$cname
       if (!_transportReady) {
         print('🔥 NUCLEAR OPTION: Manually triggering @connect event...');
         
-        // Extract DTLS parameters from local SDP
-        SdpObject localSdpObject = SdpObject.fromMap(parse(offer.sdp!));
+        // Extract DTLS parameters from local SDP (localOffer from Step 1)
+        SdpObject localSdpObject = SdpObject.fromMap(parse(localOffer.sdp!));
         DtlsParameters dtlsParameters = CommonUtils.extractDtlsParameters(localSdpObject);
         dtlsParameters.role = DtlsRole.client; // Receiver is always client
         
