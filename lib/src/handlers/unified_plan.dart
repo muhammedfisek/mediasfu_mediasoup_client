@@ -258,27 +258,52 @@ class UnifiedPlan extends HandlerInterface {
       print('   - ssrc: ${options.rtpParameters.encodings.firstOrNull?.ssrc}');
       print('   - cname: ${options.rtpParameters.rtcp?.cname}');
       
-      // 🔥 LAST RESORT: Try to set remote SDP from _remoteSdp
-      // This contains server's RTP parameters (SSRC, codecs)
-      print('🔥 LAST RESORT: Attempting setRemoteDescription with _remoteSdp...');
+      // 🔥 FAKE SDP WORKAROUND for iOS bug
+      // Create minimal SDP with real SSRC and codec info to bypass iOS native bug
+      print('🔥 FAKE SDP: Creating minimal SDP with real RTP parameters...');
       try {
-        String remoteSdpString = _remoteSdp.getSdp();
-        print('   - Remote SDP length: ${remoteSdpString.length}');
+        // Extract real parameters
+        final ssrc = options.rtpParameters.encodings.firstOrNull?.ssrc ?? 111111;
+        final cname = options.rtpParameters.rtcp?.cname ?? 'mediasoup';
+        final codec = options.rtpParameters.codecs.firstOrNull;
+        final codecName = codec?.mimeType.split('/').lastOrNull ?? 'H264';
+        final payloadType = codec?.payloadType ?? 98;
+        final clockRate = codec?.clockRate ?? 90000;
         
-        RTCSessionDescription remoteSdp = RTCSessionDescription(remoteSdpString, 'offer');
-        await _pc!.setRemoteDescription(remoteSdp);
-        print('   ✅ SUCCESS! Remote SDP set (second attempt worked!)');
+        print('   - SSRC: $ssrc');
+        print('   - CNAME: $cname');
+        print('   - Codec: $codecName (PT: $payloadType, Clock: $clockRate)');
         
-        // Now create answer properly
-        RTCSessionDescription answer = await _pc!.createAnswer({});
-        await _pc!.setLocalDescription(answer);
-        print('   ✅ Answer created and set');
+        // Build minimal SDP
+        final mediaType = options.kind == 'video' ? 'video' : 'audio';
+        final fakeSdp = '''v=0
+o=- 0 0 IN IP4 127.0.0.1
+s=-
+t=0 0
+m=$mediaType 9 UDP/TLS/RTP/SAVPF $payloadType
+c=IN IP4 0.0.0.0
+a=rtcp-mux
+a=recvonly
+a=rtpmap:$payloadType $codecName/$clockRate
+a=ssrc:$ssrc cname:$cname
+''';
+        
+        print('   - Fake SDP created (${fakeSdp.length} bytes)');
+        
+        RTCSessionDescription fakeSdpDesc = RTCSessionDescription(fakeSdp, 'answer');
+        await _pc!.setRemoteDescription(fakeSdpDesc);
+        print('   ✅ FAKE SDP set successfully! Native layer should now process RTP packets.');
       } catch (e) {
-        print('   ❌ LAST RESORT also failed: $e');
-        // Fall back to offer-based workaround
-        RTCSessionDescription offer = await _pc!.createOffer({});
-        await _pc!.setLocalDescription(offer);
-        print('   ⚠️ Using offer as fallback');
+        print('   ❌ FAKE SDP also failed: $e');
+        print('   ⚠️ Continuing without remote SDP (last resort)');
+        // Still try to create local offer for DTLS
+        try {
+          RTCSessionDescription offer = await _pc!.createOffer({});
+          await _pc!.setLocalDescription(offer);
+          print('   ⚠️ Local offer set as final fallback');
+        } catch (e2) {
+          print('   ❌ Even local offer failed: $e2');
+        }
       }
       
       // Store in the map
