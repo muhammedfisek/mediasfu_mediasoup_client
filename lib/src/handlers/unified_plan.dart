@@ -744,11 +744,21 @@ class UnifiedPlan extends HandlerInterface {
     print('🔍 DEBUG: SDP length = ${sdpString.length}');
     if (sdpString.isEmpty) {
       print('❌ DEBUG: SDP is EMPTY!');
+    } else {
+      print('🔍 DEBUG: SDP first 200 chars: ${sdpString.substring(0, sdpString.length > 200 ? 200 : sdpString.length)}');
     }
     
-    RTCSessionDescription answer = RTCSessionDescription(sdpString, 'answer');
+    RTCSessionDescription? answer;
+    try {
+      answer = RTCSessionDescription(sdpString, 'answer');
+      print('✅ DEBUG: RTCSessionDescription created successfully');
+    } catch (e) {
+      print('❌ DEBUG: RTCSessionDescription creation failed: $e');
+      rethrow;
+    }
 
     try {
+      print('🔍 DEBUG: Calling setRemoteDescription with answer.sdp=${answer.sdp?.substring(0, 50)}...');
       await _pc!.setRemoteDescription(answer);
     } catch (e) {
       // Fallback to capability-based recomputation if setRemoteDescription fails
