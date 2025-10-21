@@ -315,11 +315,11 @@ class UnifiedPlan extends HandlerInterface {
     if (!_hasDataChannelMediaSection) {
       _remoteSdp.receiveSctpAssociation();
 
-      RTCSessionDescription offer = RTCSessionDescription(_remoteSdp.getSdp(), 'offer');
+      // RTCSessionDescription offer = RTCSessionDescription(_remoteSdp.getSdp(), 'offer');
 
       // // 'receiveDataChannel() | calling pc.setRemoteDescription() [offer:${offer.toMap()}]');
 
-      await _pc!.setRemoteDescription(offer);
+      //  await _pc!.setRemoteDescription(offer);
 
       RTCSessionDescription answer = await _pc!.createAnswer({});
 
@@ -378,11 +378,11 @@ class UnifiedPlan extends HandlerInterface {
 
       await _pc!.setRemoteDescription(answer);
     } else {
-      RTCSessionDescription offer = RTCSessionDescription(_remoteSdp.getSdp(), 'offer');
+      // RTCSessionDescription offer = RTCSessionDescription(_remoteSdp.getSdp(), 'offer');
 
       // // 'restartIce() | calling pc.setRemoteDescription() [offer:${offer.toMap()}]');
 
-      await _pc!.setRemoteDescription(offer);
+      //  await _pc!.setRemoteDescription(offer);
 
       RTCSessionDescription answer = await _pc!.createAnswer({});
 
