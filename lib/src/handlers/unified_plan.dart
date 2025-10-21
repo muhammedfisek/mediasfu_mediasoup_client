@@ -251,6 +251,13 @@ class UnifiedPlan extends HandlerInterface {
       
       print('✅ Transceiver manually added: ${transceiver.mid}');
       
+      // 🔍 DEBUG: Log RTP parameters
+      print('🔍 NUCLEAR DEBUG: options.rtpParameters:');
+      print('   - mid: ${options.rtpParameters.mid}');
+      print('   - codecs: ${options.rtpParameters.codecs.length}');
+      print('   - ssrc: ${options.rtpParameters.encodings.firstOrNull?.ssrc}');
+      print('   - cname: ${options.rtpParameters.rtcp?.cname}');
+      
       // ⚠️ Create local SDP for DTLS parameters extraction
       // Use createOffer() instead of createAnswer() since we don't have remote description
       RTCSessionDescription offer = await _pc!.createOffer({});
@@ -259,6 +266,23 @@ class UnifiedPlan extends HandlerInterface {
       
       // Store in the map
       _mapMidTransceiver[localId] = transceiver;
+      
+      // 🔍 DEBUG: Monitor RTP receiver stats
+      Future.delayed(const Duration(seconds: 2), () async {
+        try {
+          final stats = await transceiver.receiver.getStats();
+          print('📊 NUCLEAR DEBUG: Receiver stats after 2s:');
+          stats.forEach((report) {
+            if (report.type == 'inbound-rtp') {
+              print('   - packetsReceived: ${report.values['packetsReceived']}');
+              print('   - bytesReceived: ${report.values['bytesReceived']}');
+              print('   - packetsLost: ${report.values['packetsLost']}');
+            }
+          });
+        } catch (e) {
+          print('⚠️ Stats error: $e');
+        }
+      });
       
       // ⚠️ Manually trigger @connect event for Transport layer
       if (!_transportReady) {
