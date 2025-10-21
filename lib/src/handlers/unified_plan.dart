@@ -254,26 +254,10 @@ class UnifiedPlan extends HandlerInterface {
       // Store in the map
       _mapMidTransceiver[localId] = transceiver;
       
-      // Setup transport if needed (for DTLS)
+      // Mark transport as ready (DTLS already established via connectConsumerTransport)
       if (!_transportReady) {
-        // Create a minimal SDP object for _setupTransport
-        SdpObject minimalSdp = SdpObject(
-          version: 0,
-          origin: Origin(
-            username: 'mediasoup-client',
-            sessionId: 0,
-            sessionVersion: 0,
-            netType: 'IN',
-            ipVer: 4,
-            address: '0.0.0.0',
-          ),
-          name: '-',
-          media: [],
-        );
-        await _setupTransport(
-          localDtlsRole: DtlsRole.client,
-          localSdpObject: minimalSdp,
-        );
+        print('⚠️ Marking transport as ready (skipping SDP-based DTLS setup)');
+        _transportReady = true;
       }
       
       print('✅ NUCLEAR OPTION (RECEIVE) completed, returning result...');
