@@ -378,12 +378,7 @@ t=0 0''';
           // Add msid-semantic (required for WebRTC)
           fakeSdpLines += '\na=msid-semantic: WMS *';
           
-          // Then add DTLS/ICE parameters
-          fakeSdpLines += '''
-a=fingerprint:$dtlsFingerprint
-a=setup:actpass
-a=ice-ufrag:$iceUfrag
-a=ice-pwd:$icePwd''';
+          // Note: DTLS/ICE parameters moved to m-line level (iOS requirement)
           
           // Add m-lines in exact offer order
           // Use first m-line for our media, others as inactive
@@ -402,7 +397,11 @@ a=mid:$offerMid
 a=rtcp-mux
 a=sendonly
 a=rtpmap:$payloadType $codecName/$clockRate
-a=ssrc:$ssrc cname:$cname''';
+a=ssrc:$ssrc cname:$cname
+a=fingerprint:$dtlsFingerprint
+a=setup:actpass
+a=ice-ufrag:$iceUfrag
+a=ice-pwd:$icePwd''';
             } else {
               // Other m-lines must be present but inactive
               final mType = mLine.startsWith('m=video') ? 'video' : 'audio';
@@ -411,7 +410,11 @@ a=ssrc:$ssrc cname:$cname''';
 m=$mType 0 UDP/TLS/RTP/SAVPF 96
 c=IN IP4 0.0.0.0
 a=mid:$offerMid
-a=inactive''';
+a=inactive
+a=fingerprint:$dtlsFingerprint
+a=setup:actpass
+a=ice-ufrag:$iceUfrag
+a=ice-pwd:$icePwd''';
             }
           }
           
