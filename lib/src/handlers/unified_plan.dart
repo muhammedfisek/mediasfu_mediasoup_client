@@ -758,48 +758,48 @@ class UnifiedPlan extends HandlerInterface {
     print('🔍 DEBUG: FULL SDP CONTENT:\n$sdpString');
     print('🔍 DEBUG: SDP ends here ^^^');
     
-    // ✅ Try multiple RTCSessionDescription construction methods
+    // ✅ WORKAROUND: Keep strong reference to prevent GC and use delayed call
     RTCSessionDescription? answer;
     bool setRemoteSuccess = false;
     
-    // Method 1: fromMap constructor (WORKAROUND for flutter_webrtc iOS bug)
-    print('🔧 Trying Method 1: RTCSessionDescription.fromMap()');
+    // Create RTCSessionDescription and keep a strong reference
+    print('🔧 Creating RTCSessionDescription with strong reference...');
+    final String sdpCopy = String.fromCharCodes(sdpString.codeUnits); // Deep copy
+    answer = RTCSessionDescription(sdpCopy, 'answer');
+    
+    // Verify it's created correctly
+    print('✅ RTCSessionDescription created:');
+    print('   - answer.sdp == null? ${answer.sdp == null}');
+    print('   - answer.sdp length = ${answer.sdp?.length ?? 0}');
+    print('   - answer.type = ${answer.type}');
+    
+    // Method 1: Try with a small delay (iOS native bridge race condition workaround)
+    print('🔧 Method 1: Trying setRemoteDescription with 50ms delay...');
     try {
-      answer = RTCSessionDescription.fromMap({
-        'sdp': sdpString,
-        'type': 'answer',
-      });
-      print('✅ Method 1: RTCSessionDescription created via fromMap');
-      print('   - answer.sdp == null? ${answer.sdp == null}');
-      print('   - answer.sdp length = ${answer.sdp?.length ?? 0}');
-      
+      await Future.delayed(const Duration(milliseconds: 50));
       await _pc!.setRemoteDescription(answer);
       print('✅ setRemoteDescription successful with Method 1!');
       setRemoteSuccess = true;
     } catch (e) {
-      print('❌ Method 1 failed: $e');
+      print('❌ Method 1 (with delay) failed: $e');
     }
     
-    // Method 2: Standard constructor (if Method 1 failed)
+    // Method 2: Try without delay but recreate the object
     if (!setRemoteSuccess) {
-      print('🔧 Trying Method 2: RTCSessionDescription(sdp, type)');
+      print('🔧 Method 2: Recreating RTCSessionDescription and trying immediately...');
       try {
-        answer = RTCSessionDescription(sdpString, 'answer');
-        print('✅ Method 2: RTCSessionDescription created via standard constructor');
-        print('   - answer.sdp == null? ${answer.sdp == null}');
-        print('   - answer.sdp length = ${answer.sdp?.length ?? 0}');
-        
+        answer = RTCSessionDescription(sdpCopy, 'answer');
         await _pc!.setRemoteDescription(answer);
         print('✅ setRemoteDescription successful with Method 2!');
         setRemoteSuccess = true;
       } catch (e) {
-        print('❌ Method 2 failed: $e');
+        print('❌ Method 2 (immediate) failed: $e');
       }
     }
     
     // Method 3: Fallback to capability-based recomputation
     if (!setRemoteSuccess) {
-      print('🔧 All methods failed, trying fallback...');
+      print('🔧 All methods failed, trying fallback with SDP regeneration...');
       // Fallback to capability-based recomputation if setRemoteDescription fails
       sendingRtpParameters = Ortc.getSendingRtpParameters(
           RTCRtpMediaTypeExtension.fromString(options.track.kind!), _extendedRtpCapabilities);
@@ -825,12 +825,10 @@ class UnifiedPlan extends HandlerInterface {
         extmapAllowMixed: true,
       );
 
-      // Use fromMap for fallback too (consistent with Method 1)
+      // Create new RTCSessionDescription with fallback SDP
       String fallbackSdp = _remoteSdp.getSdp();
-      answer = RTCSessionDescription.fromMap({
-        'sdp': fallbackSdp,
-        'type': 'answer',
-      });
+      print('🔧 Fallback: Generated new SDP (length=${fallbackSdp.length})');
+      answer = RTCSessionDescription(fallbackSdp, 'answer');
       print('🔧 Fallback: Trying setRemoteDescription with recomputed SDP...');
       await _pc!.setRemoteDescription(answer);
       print('✅ Fallback setRemoteDescription successful!');
