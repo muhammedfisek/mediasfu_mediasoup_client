@@ -363,19 +363,24 @@ class UnifiedPlan extends HandlerInterface {
           
           // Build answer SDP with matching m-line count and BUNDLE group
           final mediaType = options.kind == 'video' ? 'video' : 'audio';
+          
+          // Start SDP with session-level attributes
           var fakeSdpLines = '''v=0
 o=- 0 0 IN IP4 127.0.0.1
 s=-
-t=0 0
+t=0 0''';
+          
+          // Add BUNDLE group BEFORE other session attributes (RFC requirement)
+          if (bundleGroup != null) {
+            fakeSdpLines += '\n$bundleGroup';
+          }
+          
+          // Then add DTLS/ICE parameters
+          fakeSdpLines += '''
 a=fingerprint:$dtlsFingerprint
 a=setup:actpass
 a=ice-ufrag:$iceUfrag
 a=ice-pwd:$icePwd''';
-          
-          // Add BUNDLE group if present in offer
-          if (bundleGroup != null) {
-            fakeSdpLines += '\n$bundleGroup';
-          }
           
           // Add m-lines (first one detailed, rest minimal)
           for (var i = 0; i < mLines.length; i++) {
