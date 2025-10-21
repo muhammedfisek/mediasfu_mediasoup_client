@@ -257,8 +257,19 @@ class UnifiedPlan extends HandlerInterface {
       // Setup transport if needed (for DTLS)
       if (!_transportReady) {
         // Create a minimal SDP object for _setupTransport
-        SdpObject minimalSdp = SdpObject();
-        minimalSdp.media = [];
+        SdpObject minimalSdp = SdpObject(
+          version: 0,
+          origin: Origin(
+            username: 'mediasoup-client',
+            sessionId: 0,
+            sessionVersion: 0,
+            netType: 'IN',
+            ipVer: 4,
+            address: '0.0.0.0',
+          ),
+          name: '-',
+          media: [],
+        );
         await _setupTransport(
           localDtlsRole: DtlsRole.client,
           localSdpObject: minimalSdp,
@@ -266,6 +277,10 @@ class UnifiedPlan extends HandlerInterface {
       }
       
       print('✅ NUCLEAR OPTION (RECEIVE) completed, returning consumer...');
+      
+      // Create a MediaStream for the consumer
+      MediaStream stream = await createLocalMediaStream('remote-${options.id}');
+      stream.addTrack(transceiver.receiver.track!);
       
       // Return consumer directly
       return Consumer(
@@ -276,6 +291,7 @@ class UnifiedPlan extends HandlerInterface {
         rtpParameters: options.rtpParameters,
         track: transceiver.receiver.track,
         rtpReceiver: transceiver.receiver,
+        stream: stream,
         appData: options.appData,
       );
     }
