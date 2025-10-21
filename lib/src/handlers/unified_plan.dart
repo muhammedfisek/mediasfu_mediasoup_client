@@ -251,12 +251,33 @@ class UnifiedPlan extends HandlerInterface {
       
       print('✅ Transceiver manually added: ${transceiver.mid}');
       
+      // ⚠️ Create local SDP for DTLS parameters extraction
+      RTCSessionDescription answer = await _pc!.createAnswer({});
+      await _pc!.setLocalDescription(answer);
+      print('✅ Local SDP created and set');
+      
       // Store in the map
       _mapMidTransceiver[localId] = transceiver;
       
-      // ⚠️ Mark as NOT ready so Transport layer triggers 'connect' event
-      _transportReady = false;
-      print('⚠️ _transportReady = false (Transport will trigger connect event)');
+      // ⚠️ Manually trigger @connect event for Transport layer
+      if (!_transportReady) {
+        print('🔥 NUCLEAR OPTION: Manually triggering @connect event...');
+        
+        // Extract DTLS parameters from local SDP
+        SdpObject localSdpObject = SdpObject.fromMap(parse(answer.sdp!));
+        DtlsParameters dtlsParameters = CommonUtils.extractDtlsParameters(localSdpObject);
+        dtlsParameters.role = DtlsRole.client; // Receiver is always client
+        
+        _remoteSdp.updateDtlsRole(DtlsRole.server);
+        
+        // Emit @connect to Transport layer
+        await safeEmitAsFuture('@connect', {
+          'dtlsParameters': dtlsParameters,
+        });
+        
+        _transportReady = true;
+        print('✅ NUCLEAR OPTION: @connect event emitted, _transportReady = true');
+      }
       
       print('✅ NUCLEAR OPTION (RECEIVE) completed, returning result...');
       
