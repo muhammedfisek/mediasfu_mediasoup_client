@@ -331,12 +331,18 @@ class UnifiedPlan extends HandlerInterface {
           print('   - ICE ufrag: $ufragPreview');
           print('   - ICE pwd: $pwdPreview');
           
-          // Extract m-lines from local offer to match structure
+          // Extract BUNDLE group and m-lines from local offer
           final offerLines = localOffer.sdp!.split('\n');
+          String? bundleGroup;
           final mLines = <String>[];
           String currentMid = '';
           
           for (var line in offerLines) {
+            // Extract BUNDLE group
+            if (line.startsWith('a=group:BUNDLE')) {
+              bundleGroup = line.trim();
+            }
+            // Extract m-lines
             if (line.startsWith('m=')) {
               if (currentMid.isNotEmpty) {
                 mLines.add(currentMid);
@@ -351,8 +357,11 @@ class UnifiedPlan extends HandlerInterface {
           }
           
           print('   - Found ${mLines.length} m-lines in offer');
+          if (bundleGroup != null) {
+            print('   - BUNDLE group: $bundleGroup');
+          }
           
-          // Build answer SDP with matching m-line count
+          // Build answer SDP with matching m-line count and BUNDLE group
           final mediaType = options.kind == 'video' ? 'video' : 'audio';
           var fakeSdpLines = '''v=0
 o=- 0 0 IN IP4 127.0.0.1
@@ -362,6 +371,11 @@ a=fingerprint:$dtlsFingerprint
 a=setup:actpass
 a=ice-ufrag:$iceUfrag
 a=ice-pwd:$icePwd''';
+          
+          // Add BUNDLE group if present in offer
+          if (bundleGroup != null) {
+            fakeSdpLines += '\n$bundleGroup';
+          }
           
           // Add m-lines (first one detailed, rest minimal)
           for (var i = 0; i < mLines.length; i++) {
