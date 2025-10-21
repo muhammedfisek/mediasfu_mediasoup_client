@@ -289,7 +289,10 @@ class UnifiedPlan extends HandlerInterface {
         if (iceUfragMatch != null && icePwdMatch != null) {
           iceUfrag = iceUfragMatch.group(1);
           icePwd = icePwdMatch.group(1);
-          print('   ✅ ICE credentials extracted: ufrag=${iceUfrag?.substring(0, 8)}..., pwd=${icePwd?.substring(0, 8)}...');
+          // Safe substring (handle short credentials)
+          final ufragPreview = iceUfrag!.length > 8 ? '${iceUfrag.substring(0, 8)}...' : iceUfrag;
+          final pwdPreview = icePwd!.length > 8 ? '${icePwd.substring(0, 8)}...' : icePwd;
+          print('   ✅ ICE credentials extracted: ufrag=$ufragPreview, pwd=$pwdPreview');
         } else {
           print('   ⚠️ Could not extract ICE credentials from local SDP');
         }
@@ -322,8 +325,11 @@ class UnifiedPlan extends HandlerInterface {
           print('   - CNAME: $cname');
           print('   - Codec: $codecName (PT: $payloadType, Clock: $clockRate)');
           print('   - DTLS Fingerprint: $dtlsFingerprint');
-          print('   - ICE ufrag: ${iceUfrag.substring(0, 8)}...');
-          print('   - ICE pwd: ${icePwd.substring(0, 8)}...');
+          // Safe substring (handle short credentials)
+          final ufragPreview = iceUfrag.length > 8 ? '${iceUfrag.substring(0, 8)}...' : iceUfrag;
+          final pwdPreview = icePwd.length > 8 ? '${icePwd.substring(0, 8)}...' : icePwd;
+          print('   - ICE ufrag: $ufragPreview');
+          print('   - ICE pwd: $pwdPreview');
           
           // Build minimal SDP with DTLS fingerprint + ICE credentials
           final mediaType = options.kind == 'video' ? 'video' : 'audio';
