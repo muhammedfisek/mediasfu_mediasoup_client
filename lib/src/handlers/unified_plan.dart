@@ -252,9 +252,10 @@ class UnifiedPlan extends HandlerInterface {
       print('✅ Transceiver manually added: ${transceiver.mid}');
       
       // ⚠️ Create local SDP for DTLS parameters extraction
-      RTCSessionDescription answer = await _pc!.createAnswer({});
-      await _pc!.setLocalDescription(answer);
-      print('✅ Local SDP created and set');
+      // Use createOffer() instead of createAnswer() since we don't have remote description
+      RTCSessionDescription offer = await _pc!.createOffer({});
+      await _pc!.setLocalDescription(offer);
+      print('✅ Local SDP (offer) created and set');
       
       // Store in the map
       _mapMidTransceiver[localId] = transceiver;
@@ -264,7 +265,7 @@ class UnifiedPlan extends HandlerInterface {
         print('🔥 NUCLEAR OPTION: Manually triggering @connect event...');
         
         // Extract DTLS parameters from local SDP
-        SdpObject localSdpObject = SdpObject.fromMap(parse(answer.sdp!));
+        SdpObject localSdpObject = SdpObject.fromMap(parse(offer.sdp!));
         DtlsParameters dtlsParameters = CommonUtils.extractDtlsParameters(localSdpObject);
         dtlsParameters.role = DtlsRole.client; // Receiver is always client
         
