@@ -262,10 +262,12 @@ class UnifiedPlan extends HandlerInterface {
       print('   - ssrc: ${options.rtpParameters.encodings.firstOrNull?.ssrc}');
       print('   - cname: ${options.rtpParameters.rtcp?.cname}');
       
-      // 🔥 STEP 1: Create local offer first (to get DTLS fingerprint and correct state)
+      // 🔥 STEP 1: Create local offer first (to get DTLS fingerprint, ICE credentials and correct state)
       print('🔥 FAKE SDP Step 1: Creating local offer...');
       RTCSessionDescription localOffer;
       String? dtlsFingerprint;
+      String? iceUfrag;
+      String? icePwd;
       
       try {
         localOffer = await _pc!.createOffer({});
@@ -280,6 +282,17 @@ class UnifiedPlan extends HandlerInterface {
         } else {
           print('   ⚠️ Could not extract DTLS fingerprint from local SDP');
         }
+        
+        // Extract ICE credentials from local SDP
+        final iceUfragMatch = RegExp(r'a=ice-ufrag:(\S+)').firstMatch(localOffer.sdp ?? '');
+        final icePwdMatch = RegExp(r'a=ice-pwd:(\S+)').firstMatch(localOffer.sdp ?? '');
+        if (iceUfragMatch != null && icePwdMatch != null) {
+          iceUfrag = iceUfragMatch.group(1);
+          icePwd = icePwdMatch.group(1);
+          print('   ✅ ICE credentials extracted: ufrag=${iceUfrag?.substring(0, 8)}..., pwd=${icePwd?.substring(0, 8)}...');
+        } else {
+          print('   ⚠️ Could not extract ICE credentials from local SDP');
+        }
       } catch (e) {
         print('   ❌ Failed to create local offer: $e');
         print('   ⚠️ Cannot proceed with fake SDP without local offer');
@@ -293,8 +306,8 @@ class UnifiedPlan extends HandlerInterface {
         );
       }
       
-      // 🔥 STEP 2: Now create fake remote SDP with real RTP parameters + DTLS fingerprint
-      if (dtlsFingerprint != null) {
+      // 🔥 STEP 2: Now create fake remote SDP with real RTP parameters + DTLS fingerprint + ICE credentials
+      if (dtlsFingerprint != null && iceUfrag != null && icePwd != null) {
         print('🔥 FAKE SDP Step 2: Creating minimal remote SDP...');
         try {
           // Extract real RTP parameters
@@ -309,8 +322,10 @@ class UnifiedPlan extends HandlerInterface {
           print('   - CNAME: $cname');
           print('   - Codec: $codecName (PT: $payloadType, Clock: $clockRate)');
           print('   - DTLS Fingerprint: $dtlsFingerprint');
+          print('   - ICE ufrag: ${iceUfrag.substring(0, 8)}...');
+          print('   - ICE pwd: ${icePwd.substring(0, 8)}...');
           
-          // Build minimal SDP with DTLS fingerprint
+          // Build minimal SDP with DTLS fingerprint + ICE credentials
           final mediaType = options.kind == 'video' ? 'video' : 'audio';
           final fakeSdp = '''v=0
 o=- 0 0 IN IP4 127.0.0.1
@@ -318,6 +333,8 @@ s=-
 t=0 0
 a=fingerprint:$dtlsFingerprint
 a=setup:actpass
+a=ice-ufrag:$iceUfrag
+a=ice-pwd:$icePwd
 m=$mediaType 9 UDP/TLS/RTP/SAVPF $payloadType
 c=IN IP4 0.0.0.0
 a=rtcp-mux
@@ -336,7 +353,7 @@ a=ssrc:$ssrc cname:$cname
           print('   ⚠️ Continuing with local offer only (RTP packets may not be processed)');
         }
       } else {
-        print('   ⚠️ Skipping fake SDP (no DTLS fingerprint available)');
+        print('   ⚠️ Skipping fake SDP (missing DTLS fingerprint or ICE credentials)');
       }
       
       // Store in the map
