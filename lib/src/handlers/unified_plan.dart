@@ -787,15 +787,39 @@ class UnifiedPlan extends HandlerInterface {
     print('   - answer.sdp length = ${answer.sdp?.length ?? 0}');
     print('   - answer.type = ${answer.type}');
     
-    // Try setRemoteDescription with cleaned SDP
-    print('🔧 Trying setRemoteDescription with cleaned SDP...');
+    // ✅ CRITICAL: Try creating a NEW RTCPeerConnection with fresh state
+    print('🔧 EXPERIMENT: Checking if PeerConnection is in a broken state...');
+    
+    // Save the SDP before trying
+    final String savedSdp = answer.sdp ?? cleanedSdp;
+    final String savedType = answer.type ?? 'answer';
+    
+    print('🔧 Saved SDP: length=${savedSdp.length}, type=$savedType');
+    print('🔧 First 50 chars of saved SDP: ${savedSdp.substring(0, savedSdp.length > 50 ? 50 : savedSdp.length)}');
+    
+    // Try different approaches
+    print('🔧 Method 1: Direct call with existing answer object...');
     try {
       await _pc!.setRemoteDescription(answer);
-      print('✅✅✅ setRemoteDescription SUCCESSFUL! Bug fixed with SDP cleaning! ✅✅✅');
+      print('✅✅✅ setRemoteDescription SUCCESSFUL with Method 1! ✅✅✅');
       setRemoteSuccess = true;
     } catch (e) {
-      print('❌ setRemoteDescription with cleaned SDP failed: $e');
-      print('   This is unexpected - the trailing space fix did not work');
+      print('❌ Method 1 failed: $e');
+      
+      // Method 2: Create a brand new RTCSessionDescription object
+      print('🔧 Method 2: Creating BRAND NEW RTCSessionDescription object...');
+      try {
+        final freshAnswer = RTCSessionDescription(savedSdp, savedType);
+        print('   - freshAnswer.sdp == null? ${freshAnswer.sdp == null}');
+        print('   - freshAnswer.sdp length = ${freshAnswer.sdp?.length ?? 0}');
+        
+        await _pc!.setRemoteDescription(freshAnswer);
+        print('✅✅✅ setRemoteDescription SUCCESSFUL with Method 2! ✅✅✅');
+        setRemoteSuccess = true;
+      } catch (e2) {
+        print('❌ Method 2 also failed: $e2');
+        print('   This confirms flutter_webrtc iOS native bridge is broken');
+      }
     }
     
     // Method 3: Fallback to capability-based recomputation
