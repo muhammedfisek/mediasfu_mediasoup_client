@@ -272,13 +272,30 @@ class UnifiedPlan extends HandlerInterface {
         try {
           final stats = await transceiver.receiver.getStats();
           print('📊 NUCLEAR DEBUG: Receiver stats after 2s:');
+          print('   - Stats count: ${stats.length}');
+          
+          if (stats.isEmpty) {
+            print('   ❌ NO STATS RETURNED!');
+          }
+          
           stats.forEach((report) {
+            print('   - Report type: ${report.type}, id: ${report.id}');
+            
             if (report.type == 'inbound-rtp') {
-              print('   - packetsReceived: ${report.values['packetsReceived']}');
-              print('   - bytesReceived: ${report.values['bytesReceived']}');
-              print('   - packetsLost: ${report.values['packetsLost']}');
+              print('   ✅ INBOUND-RTP FOUND!');
+              print('      - packetsReceived: ${report.values['packetsReceived']}');
+              print('      - bytesReceived: ${report.values['bytesReceived']}');
+              print('      - packetsLost: ${report.values['packetsLost']}');
+              print('      - ssrc: ${report.values['ssrc']}');
             }
           });
+          
+          // Also check track state
+          print('🔍 Track state:');
+          print('   - track.id: ${transceiver.receiver.track?.id}');
+          print('   - track.enabled: ${transceiver.receiver.track?.enabled}');
+          print('   - track.muted: ${transceiver.receiver.track?.muted}');
+          
         } catch (e) {
           print('⚠️ Stats error: $e');
         }
