@@ -213,7 +213,7 @@ class UnifiedPlan extends HandlerInterface {
       'offer',
     );
 
-    //  'receive() | calling pc.setRemoteDescription() [offer:${offer.toMap()}]');
+    // // 'receive() | calling pc.setRemoteDescription() [offer:${offer.toMap()}]');
 
     if (offer.sdp != null && offer.sdp?.isNotEmpty == true) await _pc!.setRemoteDescription(offer);
 
@@ -582,7 +582,7 @@ class UnifiedPlan extends HandlerInterface {
 
     // Get the latest local SDP after setLocalDescription
     localSdpObject = SdpObject.fromMap(parse((await _pc!.getLocalDescription())!.sdp!));
-
+    
     // ✅ FIX: Find media section by MID instead of index
     // mediaSectionIdx.idx might be wrong if multiple transceivers exist
     offerMediaObject = localSdpObject.media.firstWhere(
@@ -602,11 +602,13 @@ class UnifiedPlan extends HandlerInterface {
     // Chrome M140+ Fix: Extract parameters directly from SDP for compatibility
     try {
       // ✅ FIX: Find correct media section index by MID
-      int actualMediaSectionIdx = localSdpObject.media.indexWhere((MediaObject m) => m.mid?.toString() == localId);
+      int actualMediaSectionIdx = localSdpObject.media.indexWhere(
+        (MediaObject m) => m.mid?.toString() == localId
+      );
       if (actualMediaSectionIdx == -1) {
         actualMediaSectionIdx = mediaSectionIdx.idx; // Fallback
       }
-
+      
       // Extract local parameters from local SDP (what Chrome offered)
       sendingRtpParameters = CommonUtils.extractSendingRtpParameters(
         localSdpObject,
@@ -723,6 +725,11 @@ class UnifiedPlan extends HandlerInterface {
       }
     }
 
+    // ✅ DEBUG: Kontrol et
+    print('🔍 DEBUG: offerMediaObject.mid = ${offerMediaObject.mid}');
+    print('🔍 DEBUG: offerMediaObject.type = ${offerMediaObject.type}');
+    print('🔍 DEBUG: sendingRtpParameters.mid = ${sendingRtpParameters.mid}');
+    
     _remoteSdp.send(
       offerMediaObject: offerMediaObject,
       reuseMid: mediaSectionIdx.reuseMid,
@@ -733,7 +740,13 @@ class UnifiedPlan extends HandlerInterface {
       extmapAllowMixed: true,
     );
 
-    RTCSessionDescription answer = RTCSessionDescription(_remoteSdp.getSdp(), 'answer');
+    String sdpString = _remoteSdp.getSdp();
+    print('🔍 DEBUG: SDP length = ${sdpString.length}');
+    if (sdpString.isEmpty) {
+      print('❌ DEBUG: SDP is EMPTY!');
+    }
+    
+    RTCSessionDescription answer = RTCSessionDescription(sdpString, 'answer');
 
     try {
       await _pc!.setRemoteDescription(answer);
