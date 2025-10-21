@@ -387,16 +387,22 @@ t=0 0''';
             final midMatch = RegExp(r'a=mid:(\S+)').firstMatch(mLine);
             final offerMid = midMatch?.group(1) ?? i.toString();
             
+            // Extract payload types from offer m-line
+            final mLineMatch = RegExp(r'm=(\w+)\s+\d+\s+[\w/]+\s+([\d\s]+)').firstMatch(mLine);
+            final offerPayloadTypes = mLineMatch?.group(2)?.trim().split(RegExp(r'\s+')) ?? ['96'];
+            final firstPayloadType = offerPayloadTypes.first;
+            
             if (i == 0) {
               // First m-line is always our target media (newest transceiver)
+              // Use the first payload type from offer to match m-line order
               fakeSdpLines += '''
 
-m=$mediaType 9 UDP/TLS/RTP/SAVPF $payloadType
+m=$mediaType 9 UDP/TLS/RTP/SAVPF $firstPayloadType
 c=IN IP4 0.0.0.0
 a=mid:$offerMid
 a=rtcp-mux
 a=sendonly
-a=rtpmap:$payloadType $codecName/$clockRate
+a=rtpmap:$firstPayloadType $codecName/$clockRate
 a=ssrc:$ssrc cname:$cname
 a=fingerprint:$dtlsFingerprint
 a=setup:actpass
@@ -407,7 +413,7 @@ a=ice-pwd:$icePwd''';
               final mType = mLine.startsWith('m=video') ? 'video' : 'audio';
               fakeSdpLines += '''
 
-m=$mType 0 UDP/TLS/RTP/SAVPF 96
+m=$mType 0 UDP/TLS/RTP/SAVPF $firstPayloadType
 c=IN IP4 0.0.0.0
 a=mid:$offerMid
 a=inactive
