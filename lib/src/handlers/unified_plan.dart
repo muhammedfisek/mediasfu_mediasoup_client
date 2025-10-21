@@ -364,16 +364,19 @@ class UnifiedPlan extends HandlerInterface {
           // Build answer SDP with matching m-line count and BUNDLE group
           final mediaType = options.kind == 'video' ? 'video' : 'audio';
           
-          // Start SDP with session-level attributes
+          // Start SDP with session-level attributes (RFC 8866 order)
           var fakeSdpLines = '''v=0
 o=- 0 0 IN IP4 127.0.0.1
 s=-
 t=0 0''';
           
-          // Add BUNDLE group BEFORE other session attributes (RFC requirement)
+          // Add BUNDLE group (must come before other session attributes)
           if (bundleGroup != null) {
             fakeSdpLines += '\n$bundleGroup';
           }
+          
+          // Add msid-semantic (required for WebRTC)
+          fakeSdpLines += '\na=msid-semantic: WMS *';
           
           // Then add DTLS/ICE parameters
           fakeSdpLines += '''
@@ -382,31 +385,32 @@ a=setup:actpass
 a=ice-ufrag:$iceUfrag
 a=ice-pwd:$icePwd''';
           
-          // Add m-lines (first one detailed, rest minimal)
+          // Add m-lines in exact offer order
+          // Use first m-line for our media, others as inactive
           for (var i = 0; i < mLines.length; i++) {
             final mLine = mLines[i];
             final midMatch = RegExp(r'a=mid:(\S+)').firstMatch(mLine);
-            final mid = midMatch?.group(1) ?? i.toString();
+            final offerMid = midMatch?.group(1) ?? i.toString();
             
-            if (mid == localId) {
-              // This is our target m-line - add full details
+            if (i == 0) {
+              // First m-line is always our target media (newest transceiver)
               fakeSdpLines += '''
 
 m=$mediaType 9 UDP/TLS/RTP/SAVPF $payloadType
 c=IN IP4 0.0.0.0
-a=mid:$mid
+a=mid:$offerMid
 a=rtcp-mux
 a=sendonly
 a=rtpmap:$payloadType $codecName/$clockRate
 a=ssrc:$ssrc cname:$cname''';
             } else {
-              // Other m-lines - add minimal (inactive)
+              // Other m-lines must be present but inactive
               final mType = mLine.startsWith('m=video') ? 'video' : 'audio';
               fakeSdpLines += '''
 
 m=$mType 0 UDP/TLS/RTP/SAVPF 96
 c=IN IP4 0.0.0.0
-a=mid:$mid
+a=mid:$offerMid
 a=inactive''';
             }
           }
