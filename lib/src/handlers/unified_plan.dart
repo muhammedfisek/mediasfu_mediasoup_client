@@ -309,7 +309,7 @@ class UnifiedPlan extends HandlerInterface {
         );
       }
       
-      // 🔥 STEP 2: Now create fake remote SDP with real RTP parameters + DTLS fingerprint + ICE credentials
+      // 🔥 STEP 2: Now create fake remote SDP matching offer's m-line structure
       if (dtlsFingerprint != null && iceUfrag != null && icePwd != null) {
         print('🔥 FAKE SDP Step 2: Creating minimal remote SDP...');
         try {
@@ -331,27 +331,72 @@ class UnifiedPlan extends HandlerInterface {
           print('   - ICE ufrag: $ufragPreview');
           print('   - ICE pwd: $pwdPreview');
           
-          // Build minimal SDP with DTLS fingerprint + ICE credentials
+          // Extract m-lines from local offer to match structure
+          final offerLines = localOffer.sdp!.split('\n');
+          final mLines = <String>[];
+          String currentMid = '';
+          
+          for (var line in offerLines) {
+            if (line.startsWith('m=')) {
+              if (currentMid.isNotEmpty) {
+                mLines.add(currentMid);
+              }
+              currentMid = line.trim();
+            } else if (line.startsWith('a=mid:') && currentMid.isNotEmpty) {
+              currentMid += '\n' + line.trim();
+            }
+          }
+          if (currentMid.isNotEmpty) {
+            mLines.add(currentMid);
+          }
+          
+          print('   - Found ${mLines.length} m-lines in offer');
+          
+          // Build answer SDP with matching m-line count
           final mediaType = options.kind == 'video' ? 'video' : 'audio';
-          final fakeSdp = '''v=0
+          var fakeSdpLines = '''v=0
 o=- 0 0 IN IP4 127.0.0.1
 s=-
 t=0 0
 a=fingerprint:$dtlsFingerprint
 a=setup:actpass
 a=ice-ufrag:$iceUfrag
-a=ice-pwd:$icePwd
+a=ice-pwd:$icePwd''';
+          
+          // Add m-lines (first one detailed, rest minimal)
+          for (var i = 0; i < mLines.length; i++) {
+            final mLine = mLines[i];
+            final midMatch = RegExp(r'a=mid:(\S+)').firstMatch(mLine);
+            final mid = midMatch?.group(1) ?? i.toString();
+            
+            if (mid == localId) {
+              // This is our target m-line - add full details
+              fakeSdpLines += '''
+
 m=$mediaType 9 UDP/TLS/RTP/SAVPF $payloadType
 c=IN IP4 0.0.0.0
+a=mid:$mid
 a=rtcp-mux
 a=sendonly
 a=rtpmap:$payloadType $codecName/$clockRate
-a=ssrc:$ssrc cname:$cname
-''';
+a=ssrc:$ssrc cname:$cname''';
+            } else {
+              // Other m-lines - add minimal (inactive)
+              final mType = mLine.startsWith('m=video') ? 'video' : 'audio';
+              fakeSdpLines += '''
+
+m=$mType 0 UDP/TLS/RTP/SAVPF 96
+c=IN IP4 0.0.0.0
+a=mid:$mid
+a=inactive''';
+            }
+          }
           
-          print('   - Fake SDP created (${fakeSdp.length} bytes)');
+          fakeSdpLines += '\n';
           
-          RTCSessionDescription fakeSdpDesc = RTCSessionDescription(fakeSdp, 'answer');
+          print('   - Fake SDP created (${fakeSdpLines.length} bytes, ${mLines.length} m-lines)');
+          
+          RTCSessionDescription fakeSdpDesc = RTCSessionDescription(fakeSdpLines, 'answer');
           await _pc!.setRemoteDescription(fakeSdpDesc);
           print('   ✅✅✅ FAKE SDP set successfully! Native layer should now process RTP packets.');
         } catch (e) {
