@@ -215,7 +215,7 @@ class UnifiedPlan extends HandlerInterface {
 
     // // 'receive() | calling pc.setRemoteDescription() [offer:${offer.toMap()}]');
 
-    await _pc!.setRemoteDescription(offer);
+    if (offer.sdp != null && offer.sdp?.isNotEmpty == true) await _pc!.setRemoteDescription(offer);
 
     RTCSessionDescription answer = await _pc!.createAnswer({});
 
@@ -319,7 +319,7 @@ class UnifiedPlan extends HandlerInterface {
 
       // // 'receiveDataChannel() | calling pc.setRemoteDescription() [offer:${offer.toMap()}]');
 
-      //  await _pc!.setRemoteDescription(offer);
+      //  if (offer.sdp!=null && offer.sdp?.isNotEmpty == true) await _pc!.setRemoteDescription(offer);
 
       RTCSessionDescription answer = await _pc!.createAnswer({});
 
@@ -382,7 +382,7 @@ class UnifiedPlan extends HandlerInterface {
 
       // // 'restartIce() | calling pc.setRemoteDescription() [offer:${offer.toMap()}]');
 
-      //  await _pc!.setRemoteDescription(offer);
+      //  if (offer.sdp!=null && offer.sdp?.isNotEmpty == true) await _pc!.setRemoteDescription(offer);
 
       RTCSessionDescription answer = await _pc!.createAnswer({});
 
@@ -582,7 +582,17 @@ class UnifiedPlan extends HandlerInterface {
 
     // Get the latest local SDP after setLocalDescription
     localSdpObject = SdpObject.fromMap(parse((await _pc!.getLocalDescription())!.sdp!));
-    offerMediaObject = localSdpObject.media[mediaSectionIdx.idx];
+    
+    // ✅ FIX: Find media section by MID instead of index
+    // mediaSectionIdx.idx might be wrong if multiple transceivers exist
+    offerMediaObject = localSdpObject.media.firstWhere(
+      (MediaObject m) => m.mid?.toString() == localId,
+      orElse: () {
+        // Fallback to index if MID not found
+        print('⚠️ Media section with mid=$localId not found, using index=${mediaSectionIdx.idx}');
+        return localSdpObject.media[mediaSectionIdx.idx];
+      },
+    );
 
     // Chrome M140+ compatibility: Extract RTP parameters directly from actual SDP
     // Chrome M140+ assigns different payload types and extension IDs depending on
@@ -591,10 +601,18 @@ class UnifiedPlan extends HandlerInterface {
 
     // Chrome M140+ Fix: Extract parameters directly from SDP for compatibility
     try {
+      // ✅ FIX: Find correct media section index by MID
+      int actualMediaSectionIdx = localSdpObject.media.indexWhere(
+        (MediaObject m) => m.mid?.toString() == localId
+      );
+      if (actualMediaSectionIdx == -1) {
+        actualMediaSectionIdx = mediaSectionIdx.idx; // Fallback
+      }
+      
       // Extract local parameters from local SDP (what Chrome offered)
       sendingRtpParameters = CommonUtils.extractSendingRtpParameters(
         localSdpObject,
-        mediaSectionIdx.idx,
+        actualMediaSectionIdx,
         RTCRtpMediaTypeExtension.fromString(options.track.kind!),
         sendingRtpParameters,
       );
@@ -908,7 +926,7 @@ class UnifiedPlan extends HandlerInterface {
 
     // 'stopReceiving() | calling pc.setRemoteDescription() [offer:${offer.toMap()}');
 
-    // if (offer.sdp!.isNotEmpty) await _pc!.setRemoteDescription(offer);
+    // if (offer.sdp!.isNotEmpty) if (offer.sdp!=null && offer.sdp?.isNotEmpty == true) await _pc!.setRemoteDescription(offer);
 
     RTCSessionDescription answer = await _pc!.createAnswer({});
 
