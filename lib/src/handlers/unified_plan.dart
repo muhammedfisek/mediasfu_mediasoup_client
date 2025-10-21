@@ -258,15 +258,32 @@ class UnifiedPlan extends HandlerInterface {
       print('   - ssrc: ${options.rtpParameters.encodings.firstOrNull?.ssrc}');
       print('   - cname: ${options.rtpParameters.rtcp?.cname}');
       
-      // ⚠️ Create local SDP for DTLS parameters extraction
-      // Use createOffer() instead of createAnswer() since we don't have remote description
-      RTCSessionDescription offer = await _pc!.createOffer({});
-      await _pc!.setLocalDescription(offer);
-      print('✅ Local SDP (offer) created and set');
+      // 🔥 LAST RESORT: Try to set remote SDP from _remoteSdp
+      // This contains server's RTP parameters (SSRC, codecs)
+      print('🔥 LAST RESORT: Attempting setRemoteDescription with _remoteSdp...');
+      try {
+        String remoteSdpString = _remoteSdp.getSdp();
+        print('   - Remote SDP length: ${remoteSdpString.length}');
+        
+        RTCSessionDescription remoteSdp = RTCSessionDescription(remoteSdpString, 'offer');
+        await _pc!.setRemoteDescription(remoteSdp);
+        print('   ✅ SUCCESS! Remote SDP set (second attempt worked!)');
+        
+        // Now create answer properly
+        RTCSessionDescription answer = await _pc!.createAnswer({});
+        await _pc!.setLocalDescription(answer);
+        print('   ✅ Answer created and set');
+      } catch (e) {
+        print('   ❌ LAST RESORT also failed: $e');
+        // Fall back to offer-based workaround
+        RTCSessionDescription offer = await _pc!.createOffer({});
+        await _pc!.setLocalDescription(offer);
+        print('   ⚠️ Using offer as fallback');
+      }
       
       // Store in the map
       _mapMidTransceiver[localId] = transceiver;
-      
+        
       // 🔍 DEBUG: Monitor RTP receiver stats
       Future.delayed(const Duration(seconds: 2), () async {
         try {
