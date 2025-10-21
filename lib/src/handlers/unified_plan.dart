@@ -276,23 +276,18 @@ class UnifiedPlan extends HandlerInterface {
         );
       }
       
-      print('✅ NUCLEAR OPTION (RECEIVE) completed, returning consumer...');
+      print('✅ NUCLEAR OPTION (RECEIVE) completed, returning result...');
       
       // Create a MediaStream for the consumer
-      MediaStream stream = await createLocalMediaStream('remote-${options.id}');
+      MediaStream stream = await createLocalMediaStream('remote-${options.trackId}');
       stream.addTrack(transceiver.receiver.track!);
       
-      // Return consumer directly
-      return Consumer(
-        id: options.id,
+      // Return HandlerReceiveResult (Transport layer will create Consumer)
+      return HandlerReceiveResult(
         localId: localId,
-        producerId: options.producerId,
-        closed: false,
-        rtpParameters: options.rtpParameters,
-        track: transceiver.receiver.track,
+        track: transceiver.receiver.track!,
         rtpReceiver: transceiver.receiver,
         stream: stream,
-        appData: options.appData,
       );
     }
 
