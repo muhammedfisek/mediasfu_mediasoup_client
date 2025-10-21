@@ -214,7 +214,7 @@ class UnifiedPlan extends HandlerInterface {
     String cleanedSdp = sdpString.split('\n')
         .map((line) => line.trimRight())
         .join('\n');
-    
+
     RTCSessionDescription offer = RTCSessionDescription(
       cleanedSdp,
       'offer',
@@ -361,6 +361,11 @@ class UnifiedPlan extends HandlerInterface {
             print('   - BUNDLE group: $bundleGroup');
           }
           
+          // DEBUG: Print full local offer SDP
+          print('🔍 DEBUG: Local offer SDP (full):');
+          print(localOffer.sdp);
+          print('🔍 DEBUG: End of local offer SDP');
+          
           // Build answer SDP with matching m-line count and BUNDLE group
           final mediaType = options.kind == 'video' ? 'video' : 'audio';
           
@@ -427,6 +432,11 @@ a=ice-pwd:$icePwd''';
           fakeSdpLines += '\n';
           
           print('   - Fake SDP created (${fakeSdpLines.length} bytes, ${mLines.length} m-lines)');
+          
+          // DEBUG: Print full fake SDP
+          print('🔍 DEBUG: Fake answer SDP (full):');
+          print(fakeSdpLines);
+          print('🔍 DEBUG: End of fake answer SDP');
           
           RTCSessionDescription fakeSdpDesc = RTCSessionDescription(fakeSdpLines, 'answer');
           await _pc!.setRemoteDescription(fakeSdpDesc);
@@ -1035,7 +1045,7 @@ a=ice-pwd:$icePwd''';
     // Try to set remote description (may fail on iOS due to flutter_webrtc bug)
     RTCSessionDescription answer = RTCSessionDescription(cleanedSdp, 'answer');
     bool setRemoteSuccess = false;
-    
+
     try {
       await _pc!.setRemoteDescription(answer);
       print('✅ setRemoteDescription successful');
