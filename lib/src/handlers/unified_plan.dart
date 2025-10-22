@@ -392,17 +392,18 @@ t=0 0''';
             final midMatch = RegExp(r'a=mid:(\S+)').firstMatch(mLine);
             final offerMid = midMatch?.group(1) ?? i.toString();
             
-            // Extract payload types from offer m-line
+            // Extract media type and payload types from offer m-line
             final mLineMatch = RegExp(r'm=(\w+)\s+\d+\s+[\w/]+\s+([\d\s]+)').firstMatch(mLine);
+            final offerMediaType = mLineMatch?.group(1) ?? 'video'; // Extract media type from offer!
             final offerPayloadTypes = mLineMatch?.group(2)?.trim().split(RegExp(r'\s+')) ?? ['96'];
             final firstPayloadType = offerPayloadTypes.first;
             
             if (i == 0) {
               // First m-line is always our target media (newest transceiver)
-              // Use the first payload type from offer to match m-line order
+              // Use EXACT media type from offer, not from options.kind!
               fakeSdpLines += '''
 
-m=$mediaType 9 UDP/TLS/RTP/SAVPF $firstPayloadType
+m=$offerMediaType 9 UDP/TLS/RTP/SAVPF $firstPayloadType
 c=IN IP4 0.0.0.0
 a=mid:$offerMid
 a=rtcp-mux
@@ -415,10 +416,12 @@ a=ice-ufrag:$iceUfrag
 a=ice-pwd:$icePwd''';
             } else {
               // Other m-lines must be present but inactive
-              final mType = mLine.startsWith('m=video') ? 'video' : 'audio';
+              // Extract media type from each m-line in offer
+              final inactiveMLineMatch = RegExp(r'm=(\w+)').firstMatch(mLine);
+              final inactiveMediaType = inactiveMLineMatch?.group(1) ?? 'video';
               fakeSdpLines += '''
 
-m=$mType 0 UDP/TLS/RTP/SAVPF $firstPayloadType
+m=$inactiveMediaType 0 UDP/TLS/RTP/SAVPF $firstPayloadType
 c=IN IP4 0.0.0.0
 a=mid:$offerMid
 a=inactive
