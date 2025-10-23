@@ -311,17 +311,28 @@ class UnifiedPlan extends HandlerInterface {
       if (dtlsFingerprint != null && iceUfrag != null && icePwd != null) {
         print('🔥 FAKE SDP Step 2: Creating minimal remote SDP...');
         try {
-          // Extract real RTP parameters
+          // Extract real RTP parameters from consumer/producer
           final ssrc = options.rtpParameters.encodings.firstOrNull?.ssrc ?? 111111;
           final cname = options.rtpParameters.rtcp?.cname ?? 'mediasoup';
-          final codec = options.rtpParameters.codecs.firstOrNull;
-          final codecName = codec?.mimeType.split('/').lastOrNull ?? 'H264';
-          final payloadType = codec?.payloadType ?? 98;
-          final clockRate = codec?.clockRate ?? 90000;
+          
+          // Use FIRST non-RTX codec (main codec)
+          final codec = options.rtpParameters.codecs.firstWhere(
+            (c) => !(c.mimeType.toLowerCase().contains('rtx')),
+            orElse: () => options.rtpParameters.codecs.first,
+          );
+          
+          final codecName = codec.mimeType.split('/').lastOrNull ?? 'H264';
+          final payloadType = codec.payloadType; // CRITICAL: Use server's PT, not local offer's
+          final clockRate = codec.clockRate ?? 90000;
+          
+          // Extract codec parameters (profile-level-id for H264, etc)
+          final codecParams = codec.parameters ?? {};
+          final profileLevelId = codecParams['profile-level-id'] ?? '';
 
           print('   - SSRC: $ssrc');
           print('   - CNAME: $cname');
           print('   - Codec: $codecName (PT: $payloadType, Clock: $clockRate)');
+          print('   - Profile-Level-ID: $profileLevelId');
           print('   - DTLS Fingerprint: $dtlsFingerprint');
           // Safe substring (handle short credentials)
           final ufragPreview = iceUfrag.length > 8 ? '${iceUfrag.substring(0, 8)}...' : iceUfrag;
@@ -390,23 +401,47 @@ t=0 0''';
             final midMatch = RegExp(r'a=mid:(\S+)').firstMatch(mLine);
             final offerMid = midMatch?.group(1) ?? i.toString();
 
-            // Extract media type and payload types from offer m-line
+            // Extract media type from offer m-line
             final mLineMatch = RegExp(r'm=(\w+)\s+\d+\s+[\w/]+\s+([\d\s]+)').firstMatch(mLine);
-            final offerMediaType = mLineMatch?.group(1) ?? 'video'; // Extract media type from offer!
+            final offerMediaType = mLineMatch?.group(1) ?? 'video';
             final offerPayloadTypes = mLineMatch?.group(2)?.trim().split(RegExp(r'\s+')) ?? ['96'];
-            final firstPayloadType = offerPayloadTypes.first;
+            final firstOfferPayloadType = offerPayloadTypes.first;
 
             if (i == 0) {
               // First m-line is always our target media (newest transceiver)
-              // Use EXACT media type from offer, not from options.kind!
+              // ⚠️ USE SERVER'S PAYLOAD TYPE (from options.rtpParameters), NOT LOCAL OFFER'S!
               fakeSdpLines += '''
 
-m=$offerMediaType 9 UDP/TLS/RTP/SAVPF $firstPayloadType
+m=$offerMediaType 9 UDP/TLS/RTP/SAVPF $payloadType
 c=IN IP4 0.0.0.0
 a=mid:$offerMid
 a=rtcp-mux
 a=sendonly
-a=rtpmap:$firstPayloadType $codecName/$clockRate
+a=rtpmap:$payloadType $codecName/$clockRate''';
+
+              // Add codec-specific fmtp parameters (H264: profile-level-id, etc)
+              if (codecParams.isNotEmpty) {
+                final fmtpParts = <String>[];
+                codecParams.forEach((key, value) {
+                  fmtpParts.add('$key=$value');
+                });
+                if (fmtpParts.isNotEmpty) {
+                  fakeSdpLines += '\na=fmtp:$payloadType ${fmtpParts.join(';')}';
+                }
+              }
+
+              // Add RTCP feedback (essential for video)
+              if (mediaType == 'video') {
+                fakeSdpLines += '''
+a=rtcp-fb:$payloadType goog-remb
+a=rtcp-fb:$payloadType transport-cc
+a=rtcp-fb:$payloadType ccm fir
+a=rtcp-fb:$payloadType nack
+a=rtcp-fb:$payloadType nack pli''';
+              }
+
+              // Add SSRC
+              fakeSdpLines += '''
 a=ssrc:$ssrc cname:$cname
 a=fingerprint:$dtlsFingerprint
 a=setup:passive
@@ -414,12 +449,11 @@ a=ice-ufrag:$iceUfrag
 a=ice-pwd:$icePwd''';
             } else {
               // Other m-lines must be present but inactive
-              // Extract media type from each m-line in offer
               final inactiveMLineMatch = RegExp(r'm=(\w+)').firstMatch(mLine);
               final inactiveMediaType = inactiveMLineMatch?.group(1) ?? 'video';
               fakeSdpLines += '''
 
-m=$inactiveMediaType 0 UDP/TLS/RTP/SAVPF $firstPayloadType
+m=$inactiveMediaType 0 UDP/TLS/RTP/SAVPF $firstOfferPayloadType
 c=IN IP4 0.0.0.0
 a=mid:$offerMid
 a=inactive
