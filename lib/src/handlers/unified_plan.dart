@@ -211,9 +211,7 @@ class UnifiedPlan extends HandlerInterface {
 
     // ✅ Clean SDP - remove trailing spaces from lines
     String sdpString = _remoteSdp.getSdp();
-    String cleanedSdp = sdpString.split('\n')
-        .map((line) => line.trimRight())
-        .join('\n');
+    String cleanedSdp = sdpString.split('\n').map((line) => line.trimRight()).join('\n');
 
     RTCSessionDescription offer = RTCSessionDescription(
       cleanedSdp,
@@ -233,17 +231,17 @@ class UnifiedPlan extends HandlerInterface {
         // The media plane might still work if DTLS/ICE is established
       }
     }
-    
+
     // 🔥 NUCLEAR OPTION: Skip setRemoteDescription for iOS receive transport
     if (!setRemoteSuccess) {
       print('🔥🔥🔥 NUCLEAR OPTION ACTIVATED (RECEIVE) 🔥🔥🔥');
       print('⚠️ setRemoteDescription failed on iOS receive transport');
       print('⚠️ This is a WORKAROUND for flutter_webrtc iOS bug');
       print('⚠️ Will manually add transceiver instead of SDP exchange...');
-      
+
       // Create MediaStream first (needed for early return)
       MediaStream stream = await createLocalMediaStream('remote-${options.trackId}');
-      
+
       // Manually add transceiver since SDP exchange is broken on iOS
       RTCRtpTransceiver transceiver = await _pc!.addTransceiver(
         kind: options.kind,
@@ -251,29 +249,29 @@ class UnifiedPlan extends HandlerInterface {
           direction: TransceiverDirection.RecvOnly,
         ),
       );
-      
+
       stream.addTrack(transceiver.receiver.track!);
       print('✅ Transceiver manually added: ${transceiver.mid}');
-      
+
       // 🔍 DEBUG: Log RTP parameters
       print('🔍 NUCLEAR DEBUG: options.rtpParameters:');
       print('   - mid: ${options.rtpParameters.mid}');
       print('   - codecs: ${options.rtpParameters.codecs.length}');
       print('   - ssrc: ${options.rtpParameters.encodings.firstOrNull?.ssrc}');
       print('   - cname: ${options.rtpParameters.rtcp?.cname}');
-      
+
       // 🔥 STEP 1: Create local offer first (to get DTLS fingerprint, ICE credentials and correct state)
       print('🔥 FAKE SDP Step 1: Creating local offer...');
       RTCSessionDescription localOffer;
       String? dtlsFingerprint;
       String? iceUfrag;
       String? icePwd;
-      
+
       try {
         localOffer = await _pc!.createOffer({});
         await _pc!.setLocalDescription(localOffer);
         print('   ✅ Local offer created (state: have-local-offer)');
-        
+
         // Extract DTLS fingerprint from local SDP
         final fingerprintMatch = RegExp(r'a=fingerprint:(\S+ \S+)').firstMatch(localOffer.sdp ?? '');
         if (fingerprintMatch != null) {
@@ -282,7 +280,7 @@ class UnifiedPlan extends HandlerInterface {
         } else {
           print('   ⚠️ Could not extract DTLS fingerprint from local SDP');
         }
-        
+
         // Extract ICE credentials from local SDP
         final iceUfragMatch = RegExp(r'a=ice-ufrag:(\S+)').firstMatch(localOffer.sdp ?? '');
         final icePwdMatch = RegExp(r'a=ice-pwd:(\S+)').firstMatch(localOffer.sdp ?? '');
@@ -308,7 +306,7 @@ class UnifiedPlan extends HandlerInterface {
           stream: stream,
         );
       }
-      
+
       // 🔥 STEP 2: Now create fake remote SDP matching offer's m-line structure
       if (dtlsFingerprint != null && iceUfrag != null && icePwd != null) {
         print('🔥 FAKE SDP Step 2: Creating minimal remote SDP...');
@@ -320,7 +318,7 @@ class UnifiedPlan extends HandlerInterface {
           final codecName = codec?.mimeType.split('/').lastOrNull ?? 'H264';
           final payloadType = codec?.payloadType ?? 98;
           final clockRate = codec?.clockRate ?? 90000;
-          
+
           print('   - SSRC: $ssrc');
           print('   - CNAME: $cname');
           print('   - Codec: $codecName (PT: $payloadType, Clock: $clockRate)');
@@ -330,13 +328,13 @@ class UnifiedPlan extends HandlerInterface {
           final pwdPreview = icePwd.length > 8 ? '${icePwd.substring(0, 8)}...' : icePwd;
           print('   - ICE ufrag: $ufragPreview');
           print('   - ICE pwd: $pwdPreview');
-          
+
           // Extract BUNDLE group and m-lines from local offer
           final offerLines = localOffer.sdp!.split('\n');
           String? bundleGroup;
           final mLines = <String>[];
           String currentMid = '';
-          
+
           for (var line in offerLines) {
             // Extract BUNDLE group
             if (line.startsWith('a=group:BUNDLE')) {
@@ -355,49 +353,49 @@ class UnifiedPlan extends HandlerInterface {
           if (currentMid.isNotEmpty) {
             mLines.add(currentMid);
           }
-          
+
           print('   - Found ${mLines.length} m-lines in offer');
           if (bundleGroup != null) {
             print('   - BUNDLE group: $bundleGroup');
           }
-          
+
           // DEBUG: Print full local offer SDP
           print('🔍 DEBUG: Local offer SDP (full):');
           print(localOffer.sdp);
           print('🔍 DEBUG: End of local offer SDP');
-          
+
           // Build answer SDP with matching m-line count and BUNDLE group
           final mediaType = options.kind == 'video' ? 'video' : 'audio';
-          
+
           // Start SDP with session-level attributes (RFC 8866 order)
           var fakeSdpLines = '''v=0
 o=- 0 0 IN IP4 127.0.0.1
 s=-
 t=0 0''';
-          
+
           // Add BUNDLE group (must come before other session attributes)
           if (bundleGroup != null) {
             fakeSdpLines += '\n$bundleGroup';
           }
-          
+
           // Add msid-semantic (required for WebRTC)
           fakeSdpLines += '\na=msid-semantic: WMS *';
-          
+
           // Note: DTLS/ICE parameters moved to m-line level (iOS requirement)
-          
+
           // Add m-lines in exact offer order
           // Use first m-line for our media, others as inactive
           for (var i = 0; i < mLines.length; i++) {
             final mLine = mLines[i];
             final midMatch = RegExp(r'a=mid:(\S+)').firstMatch(mLine);
             final offerMid = midMatch?.group(1) ?? i.toString();
-            
+
             // Extract media type and payload types from offer m-line
             final mLineMatch = RegExp(r'm=(\w+)\s+\d+\s+[\w/]+\s+([\d\s]+)').firstMatch(mLine);
             final offerMediaType = mLineMatch?.group(1) ?? 'video'; // Extract media type from offer!
             final offerPayloadTypes = mLineMatch?.group(2)?.trim().split(RegExp(r'\s+')) ?? ['96'];
             final firstPayloadType = offerPayloadTypes.first;
-            
+
             if (i == 0) {
               // First m-line is always our target media (newest transceiver)
               // Use EXACT media type from offer, not from options.kind!
@@ -411,7 +409,7 @@ a=sendonly
 a=rtpmap:$firstPayloadType $codecName/$clockRate
 a=ssrc:$ssrc cname:$cname
 a=fingerprint:$dtlsFingerprint
-a=setup:actpass
+a=setup:passive
 a=ice-ufrag:$iceUfrag
 a=ice-pwd:$icePwd''';
             } else {
@@ -426,21 +424,21 @@ c=IN IP4 0.0.0.0
 a=mid:$offerMid
 a=inactive
 a=fingerprint:$dtlsFingerprint
-a=setup:actpass
+a=setup:passive
 a=ice-ufrag:$iceUfrag
 a=ice-pwd:$icePwd''';
             }
           }
-          
+
           fakeSdpLines += '\n';
-          
+
           print('   - Fake SDP created (${fakeSdpLines.length} bytes, ${mLines.length} m-lines)');
-          
+
           // DEBUG: Print full fake SDP
           print('🔍 DEBUG: Fake answer SDP (full):');
           print(fakeSdpLines);
           print('🔍 DEBUG: End of fake answer SDP');
-          
+
           RTCSessionDescription fakeSdpDesc = RTCSessionDescription(fakeSdpLines, 'answer');
           await _pc!.setRemoteDescription(fakeSdpDesc);
           print('   ✅✅✅ FAKE SDP set successfully! Native layer should now process RTP packets.');
@@ -451,24 +449,24 @@ a=ice-pwd:$icePwd''';
       } else {
         print('   ⚠️ Skipping fake SDP (missing DTLS fingerprint or ICE credentials)');
       }
-      
+
       // Store in the map
       _mapMidTransceiver[localId] = transceiver;
-        
+
       // 🔍 DEBUG: Monitor RTP receiver stats
       Future.delayed(const Duration(seconds: 2), () async {
         try {
           final stats = await transceiver.receiver.getStats();
           print('📊 NUCLEAR DEBUG: Receiver stats after 2s:');
           print('   - Stats count: ${stats.length}');
-          
+
           if (stats.isEmpty) {
             print('   ❌ NO STATS RETURNED!');
           }
-          
+
           stats.forEach((report) {
             print('   - Report type: ${report.type}, id: ${report.id}');
-            
+
             if (report.type == 'inbound-rtp') {
               print('   ✅ INBOUND-RTP FOUND!');
               print('      - packetsReceived: ${report.values['packetsReceived']}');
@@ -477,40 +475,39 @@ a=ice-pwd:$icePwd''';
               print('      - ssrc: ${report.values['ssrc']}');
             }
           });
-          
+
           // Also check track state
           print('🔍 Track state:');
           print('   - track.id: ${transceiver.receiver.track?.id}');
           print('   - track.enabled: ${transceiver.receiver.track?.enabled}');
           print('   - track.muted: ${transceiver.receiver.track?.muted}');
-          
         } catch (e) {
           print('⚠️ Stats error: $e');
         }
       });
-      
+
       // ⚠️ Manually trigger @connect event for Transport layer
       if (!_transportReady) {
         print('🔥 NUCLEAR OPTION: Manually triggering @connect event...');
-        
+
         // Extract DTLS parameters from local SDP (localOffer from Step 1)
         SdpObject localSdpObject = SdpObject.fromMap(parse(localOffer.sdp!));
         DtlsParameters dtlsParameters = CommonUtils.extractDtlsParameters(localSdpObject);
         dtlsParameters.role = DtlsRole.client; // Receiver is always client
-        
+
         _remoteSdp.updateDtlsRole(DtlsRole.server);
-        
+
         // Emit @connect to Transport layer
         await safeEmitAsFuture('@connect', {
           'dtlsParameters': dtlsParameters,
         });
-        
+
         _transportReady = true;
         print('✅ NUCLEAR OPTION: @connect event emitted, _transportReady = true');
       }
-      
+
       print('✅ NUCLEAR OPTION (RECEIVE) completed, returning result...');
-      
+
       // Return HandlerReceiveResult (Transport layer will create Consumer)
       // Note: stream was already created at the beginning of NUCLEAR OPTION block
       return HandlerReceiveResult(
@@ -886,7 +883,7 @@ a=ice-pwd:$icePwd''';
 
     // Get the latest local SDP after setLocalDescription
     localSdpObject = SdpObject.fromMap(parse((await _pc!.getLocalDescription())!.sdp!));
-    
+
     // ✅ FIX: Find media section by MID instead of index
     // mediaSectionIdx.idx might be wrong if multiple transceivers exist
     offerMediaObject = localSdpObject.media.firstWhere(
@@ -906,13 +903,11 @@ a=ice-pwd:$icePwd''';
     // Chrome M140+ Fix: Extract parameters directly from SDP for compatibility
     try {
       // ✅ FIX: Find correct media section index by MID
-      int actualMediaSectionIdx = localSdpObject.media.indexWhere(
-        (MediaObject m) => m.mid?.toString() == localId
-      );
+      int actualMediaSectionIdx = localSdpObject.media.indexWhere((MediaObject m) => m.mid?.toString() == localId);
       if (actualMediaSectionIdx == -1) {
         actualMediaSectionIdx = mediaSectionIdx.idx; // Fallback
       }
-      
+
       // Extract local parameters from local SDP (what Chrome offered)
       sendingRtpParameters = CommonUtils.extractSendingRtpParameters(
         localSdpObject,
@@ -1039,12 +1034,10 @@ a=ice-pwd:$icePwd''';
     );
 
     String sdpString = _remoteSdp.getSdp();
-    
+
     // ✅ Clean SDP - remove trailing spaces from lines
-    String cleanedSdp = sdpString.split('\n')
-        .map((line) => line.trimRight())
-        .join('\n');
-    
+    String cleanedSdp = sdpString.split('\n').map((line) => line.trimRight()).join('\n');
+
     // Try to set remote description (may fail on iOS due to flutter_webrtc bug)
     RTCSessionDescription answer = RTCSessionDescription(cleanedSdp, 'answer');
     bool setRemoteSuccess = false;
@@ -1057,7 +1050,7 @@ a=ice-pwd:$icePwd''';
       print('⚠️ setRemoteDescription failed (iOS flutter_webrtc bug): $e');
       // Don't throw - we'll handle this below
     }
-    
+
     // 🔥 NUCLEAR OPTION: Skip setRemoteDescription for iOS send transport
     if (!setRemoteSuccess) {
       print('🔥🔥🔥 NUCLEAR OPTION ACTIVATED 🔥🔥🔥');
@@ -1065,12 +1058,12 @@ a=ice-pwd:$icePwd''';
       print('⚠️ ICE/DTLS connection is already established via connectProducerTransport');
       print('⚠️ We will SKIP setRemoteDescription and return RTP parameters anyway');
       print('⚠️ This is a WORKAROUND for flutter_webrtc iOS bug');
-      
+
       // ✅ DON'T throw error! Just log and continue
       // The track is already added to the PeerConnection
       // ICE/DTLS is already connected
       // We just couldn't set the remote SDP, which is OK for send-only transport
-      
+
       setRemoteSuccess = true; // Pretend it worked
       print('✅ Continuing without remote SDP (send transport doesn\'t need it)');
     }
