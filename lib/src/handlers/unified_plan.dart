@@ -1,5 +1,7 @@
 // ignore_for_file: cast_from_null_always_fails, empty_catches
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:sdp_transform/sdp_transform.dart';
@@ -314,17 +316,17 @@ class UnifiedPlan extends HandlerInterface {
           // Extract real RTP parameters from consumer/producer
           final ssrc = options.rtpParameters.encodings.firstOrNull?.ssrc ?? 111111;
           final cname = options.rtpParameters.rtcp?.cname ?? 'mediasoup';
-          
+
           // Use FIRST non-RTX codec (main codec)
           final codec = options.rtpParameters.codecs.firstWhere(
             (c) => !(c.mimeType.toLowerCase().contains('rtx')),
             orElse: () => options.rtpParameters.codecs.first,
           );
-          
+
           final codecName = codec.mimeType.split('/').lastOrNull ?? 'H264';
           final payloadType = codec.payloadType; // CRITICAL: Use server's PT, not local offer's
           final clockRate = codec.clockRate ?? 90000;
-          
+
           // Extract codec parameters (profile-level-id for H264, etc)
           final codecParams = codec.parameters ?? {};
           final profileLevelId = codecParams['profile-level-id'] ?? '';
@@ -1076,13 +1078,21 @@ a=ice-pwd:$icePwd''';
     RTCSessionDescription answer = RTCSessionDescription(cleanedSdp, 'answer');
     bool setRemoteSuccess = false;
 
-    try {
+    /* try {
       await _pc!.setRemoteDescription(answer);
       print('✅ setRemoteDescription successful');
       setRemoteSuccess = true;
     } catch (e) {
       print('⚠️ setRemoteDescription failed (iOS flutter_webrtc bug): $e');
       // Don't throw - we'll handle this below
+    }*/
+    if (Platform.isIOS) {
+      // 🔥 NUCLEAR BLOCK
+    } else {
+      // ✅ NORMAL FLOW
+      await _pc!.setRemoteDescription(offer);
+      print('✅ receive() setRemoteDescription successful - NORMAL FLOW ANDROID');
+      setRemoteSuccess = true;
     }
 
     // 🔥 NUCLEAR OPTION: Skip setRemoteDescription for iOS send transport
