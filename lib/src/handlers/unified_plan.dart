@@ -417,9 +417,13 @@ t=0 0''';
 m=$offerMediaType 9 UDP/TLS/RTP/SAVPF $payloadType
 c=IN IP4 0.0.0.0
 a=mid:$offerMid
+a=msid:${stream.id} ${options.trackId}
+a=mid:${localId}
 a=rtcp-mux
 a=sendonly
 a=rtpmap:$payloadType $codecName/$clockRate''';
+
+              print('======>>>>> FSK LOG: $fakeSdpLines');
 
               // Add codec-specific fmtp parameters (H264: profile-level-id, etc)
               if (codecParams.isNotEmpty) {
