@@ -433,10 +433,10 @@ a=rtpmap:$payloadType $codecName/$clockRate''';
               }
 
               // Add RTCP feedback (essential for video)
-              if (mediaType == 'video') {
+              if (false && mediaType == 'video') {
                 fakeSdpLines += '''
 a=rtcp-fb:$payloadType goog-remb
-a=rtcp-fb:$payloadType transport-cc
+a=rtcp-fb:$payloadType transport-cc 
 a=rtcp-fb:$payloadType ccm fir
 a=rtcp-fb:$payloadType nack
 a=rtcp-fb:$payloadType nack pli''';
@@ -445,6 +445,7 @@ a=rtcp-fb:$payloadType nack pli''';
               // Add SSRC
               fakeSdpLines += '''
 a=ssrc:$ssrc cname:$cname
+a=msid:${stream.id} ${options.trackId}
 a=fingerprint:$dtlsFingerprint
 a=setup:passive
 a=ice-ufrag:$iceUfrag
