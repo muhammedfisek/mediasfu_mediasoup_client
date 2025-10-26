@@ -319,8 +319,8 @@ class UnifiedPlan extends HandlerInterface {
 
           // Use FIRST non-RTX codec (main codec)
           final codec = options.rtpParameters.codecs.firstWhere(
-            (c) => !(c.mimeType.toLowerCase().contains('rtx')),
-            orElse: () => options.rtpParameters.codecs.first,
+            (c) => c.mimeType.toLowerCase().contains('h264'),
+            orElse: () => options.rtpParameters.codecs.last,
           );
 
           final codecName = codec.mimeType.split('/').lastOrNull ?? 'H264';
