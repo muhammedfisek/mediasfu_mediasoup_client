@@ -824,17 +824,23 @@ class Transport extends EnhancedEventEmitter {
   }
 
   RtpCodecCapability _autoSelectCodec(MediaStreamTrack track) {
-    final String kindStr = track.kind!; // "audio" | "video"
+    final String kindStr = track.kind!;
     final kind = RTCRtpMediaTypeExtension.fromString(kindStr);
 
-    // uygun extended codec'i bul
     final ExtendedRtpCodec ext = _extendedRtpCapabilities!.codecs.firstWhere(
       (c) => c.kind == kind,
       orElse: () => throw 'no matching codec found',
     );
 
-    // Producer için kullanılacak payload type → remotePayloadType
-    final pt = ext.remotePayloadType ?? ext.localPayloadType;
+    // Producer için payloadType = remotePayloadType
+    int? pt = ext.remotePayloadType ?? ext.localPayloadType;
+
+    // 🔥 Router’a göre zorunlu payloadType düzelt
+    if (kind == RTCRtpMediaType.RTCRtpMediaTypeVideo) {
+      pt = 101; // ROUTER PAYLOAD TYPE (H264)
+    } else if (kind == RTCRtpMediaType.RTCRtpMediaTypeAudio) {
+      pt = 100; // ROUTER PAYLOAD TYPE (OPUS)
+    }
 
     return RtpCodecCapability(
       kind: ext.kind,
