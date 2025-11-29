@@ -875,7 +875,8 @@ class Transport extends EnhancedEventEmitter {
         track: arguments.track,
         encodings: normalizedEncodings,
         codecOptions: arguments.codecOptions,
-        codec: arguments.codec,
+        codec: null,
+        // arguments.codec,
         stream: arguments.stream,
       ));
 
