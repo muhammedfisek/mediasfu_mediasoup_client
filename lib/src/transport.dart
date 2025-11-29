@@ -215,12 +215,8 @@ class IceCandidate {
         port = data['port'],
         priority = data['priority'],
         type = IceCandidateTypeExtension.fromString(data['type']),
-        protocol = data['protocol'] != null
-            ? ProtocolExtension.fromString(data['protocol'])
-            : null,
-        tcpType = data['tcpType'] != null
-            ? TcpTypeExtension.fromString(data['tcpType'])
-            : null,
+        protocol = data['protocol'] != null ? ProtocolExtension.fromString(data['protocol']) : null,
+        tcpType = data['tcpType'] != null ? TcpTypeExtension.fromString(data['tcpType']) : null,
         transport = data['transport'] ?? 'udp',
         raddr = data['raddr'],
         rport = data['rport'],
@@ -343,15 +339,13 @@ class DtlsParameters {
 
   DtlsParameters.fromMap(Map data)
       : role = DtlsRoleExtension.fromString(data['role']),
-        fingerprints = List<DtlsFingerprint>.from((data['fingerprints'] ?? [])
-            .map((fingerP) => DtlsFingerprint.fromMap(fingerP))
-            .toList());
+        fingerprints = List<DtlsFingerprint>.from(
+            (data['fingerprints'] ?? []).map((fingerP) => DtlsFingerprint.fromMap(fingerP)).toList());
 
   Map<String, dynamic> toMap() {
     return {
       'role': role.value,
-      'fingerprints':
-          fingerprints.map((DtlsFingerprint fp) => fp.toMap()).toList(),
+      'fingerprints': fingerprints.map((DtlsFingerprint fp) => fp.toMap()).toList(),
     };
   }
 }
@@ -556,11 +550,7 @@ class Transport extends EnhancedEventEmitter {
           return;
         }
 
-        safeEmit('connect', {
-          'dtlsParameters': dtlsParameters,
-          'callback': callback,
-          'errback': errback
-        });
+        safeEmit('connect', {'dtlsParameters': dtlsParameters, 'callback': callback, 'errback': errback});
       },
     );
 
@@ -718,8 +708,7 @@ class Transport extends EnhancedEventEmitter {
         argument: producer.localId,
         execFun: _handler.stopSending,
         message: 'producer @close event',
-        errorCallbackFun: (error) =>
-            _logger.warn('producer.close() failed:${error.toString()}'),
+        errorCallbackFun: (error) => _logger.warn('producer.close() failed:${error.toString()}'),
       ));
     });
 
@@ -743,8 +732,7 @@ class Transport extends EnhancedEventEmitter {
       final errback = data['errback'];
       _flexQueue.addTask(FlexTaskAdd(
         id: '',
-        argument: SetMaxSpatialLayerOptions(
-            localId: producer.localId, spatialLayer: spatialLayer),
+        argument: SetMaxSpatialLayerOptions(localId: producer.localId, spatialLayer: spatialLayer),
         callbackFun: callback,
         errorCallbackFun: errback,
         execFun: _handler.setMaxSpatialLayer,
@@ -758,8 +746,7 @@ class Transport extends EnhancedEventEmitter {
       final errback = data['errback'];
       _flexQueue.addTask(FlexTaskAdd(
         id: '',
-        argument: SetRtpEncodingParametersOptions(
-            localId: producer.localId, params: params),
+        argument: SetRtpEncodingParametersOptions(localId: producer.localId, params: params),
         execFun: _handler.setRtpEncodingParameters,
         callbackFun: callback,
         errorCallbackFun: errback,
@@ -774,10 +761,7 @@ class Transport extends EnhancedEventEmitter {
         return errback(Error.safeToString('close'));
       }
 
-      _handler
-          .getSenderStats(producer.localId)
-          .then(callback)
-          .catchError(errback);
+      _handler.getSenderStats(producer.localId).then(callback).catchError(errback);
     });
   }
 
@@ -804,10 +788,7 @@ class Transport extends EnhancedEventEmitter {
         return errback(Error.safeToString('closed'));
       }
 
-      _handler
-          .getReceiverStats(consumer.localId)
-          .then(callback)
-          .catchError(errback);
+      _handler.getReceiverStats(consumer.localId).then(callback).catchError(errback);
     });
   }
 
@@ -830,10 +811,8 @@ class Transport extends EnhancedEventEmitter {
       if (arguments.encodings.isEmpty) {
         normalizedEncodings = [];
       } else if (arguments.encodings.isNotEmpty) {
-        normalizedEncodings =
-            arguments.encodings.map((RtpEncodingParameters encoding) {
-          RtpEncodingParameters normalizedEncoding =
-              RtpEncodingParameters(active: true);
+        normalizedEncodings = arguments.encodings.map((RtpEncodingParameters encoding) {
+          RtpEncodingParameters normalizedEncoding = RtpEncodingParameters(active: true);
 
           if (encoding.active == false) {
             normalizedEncoding.active = false;
@@ -845,8 +824,7 @@ class Transport extends EnhancedEventEmitter {
             normalizedEncoding.scalabilityMode = encoding.scalabilityMode;
           }
           if (encoding.scaleResolutionDownBy != null) {
-            normalizedEncoding.scaleResolutionDownBy =
-                encoding.scaleResolutionDownBy;
+            normalizedEncoding.scaleResolutionDownBy = encoding.scaleResolutionDownBy;
           }
           if (encoding.maxBitrate != null) {
             normalizedEncoding.maxBitrate = encoding.maxBitrate;
@@ -944,9 +922,7 @@ class Transport extends EnhancedEventEmitter {
 
     if (_direction != Direction.send) {
       throw ('not a sending Transport');
-    } else if (track.kind == null ||
-        !_canProduceByKind
-            .canIt(RTCRtpMediaTypeExtension.fromString(track.kind!))) {
+    } else if (track.kind == null || !_canProduceByKind.canIt(RTCRtpMediaTypeExtension.fromString(track.kind!))) {
       throw ('cannot produce ${track.kind}');
     } else if (listeners('connect').isEmpty && _connectionState == 'new') {
       throw ('no "connect" listener set into this transport');
@@ -977,15 +953,13 @@ class Transport extends EnhancedEventEmitter {
 
   Future<void> _consume(ConsumeArguments arguments) async {
     // Unsure the device can consume it.
-    bool canConsume =
-        Ortc.canReceive(arguments.rtpParameters, _extendedRtpCapabilities);
+    bool canConsume = Ortc.canReceive(arguments.rtpParameters, _extendedRtpCapabilities);
 
     if (!canConsume) {
       throw ('cannot consume this Producer');
     }
 
-    HandlerReceiveResult receiveResult =
-        await _handler.receive(HandlerReceiveOptions(
+    HandlerReceiveResult receiveResult = await _handler.receive(HandlerReceiveOptions(
       trackId: arguments.id,
       kind: arguments.kind,
       rtpParameters: arguments.rtpParameters,
@@ -1009,11 +983,9 @@ class Transport extends EnhancedEventEmitter {
 
     // If this is the first video Consumer and the Consumer for RTP probation
     // has not yet been created, create it now.
-    if (!_probatorConsumerCreated &&
-        arguments.kind == RTCRtpMediaType.RTCRtpMediaTypeVideo) {
+    if (!_probatorConsumerCreated && arguments.kind == RTCRtpMediaType.RTCRtpMediaTypeVideo) {
       try {
-        RtpParameters probatorRtpParameters =
-            Ortc.generateProbatorRtpparameters(consumer.rtpParameters);
+        RtpParameters probatorRtpParameters = Ortc.generateProbatorRtpparameters(consumer.rtpParameters);
 
         await _handler.receive(HandlerReceiveOptions(
           trackId: 'probator',
@@ -1025,8 +997,7 @@ class Transport extends EnhancedEventEmitter {
 
         _probatorConsumerCreated = true;
       } catch (error) {
-        _logger.error(
-            'consume() | failed to create Consumer for RTP probation:${error.toString()}');
+        _logger.error('consume() | failed to create Consumer for RTP probation:${error.toString()}');
       }
     }
 
@@ -1055,8 +1026,7 @@ class Transport extends EnhancedEventEmitter {
       throw ('closed');
     } else if (_direction != Direction.recv) {
       throw ('not a receiving Transport');
-    } else if (kind != RTCRtpMediaType.RTCRtpMediaTypeAudio &&
-        kind != RTCRtpMediaType.RTCRtpMediaTypeVideo) {
+    } else if (kind != RTCRtpMediaType.RTCRtpMediaTypeAudio && kind != RTCRtpMediaType.RTCRtpMediaTypeVideo) {
       throw ('invalid kind ${RTCRtpMediaTypeExtension.value(kind)}');
     } else if (listeners('connect').isEmpty && _connectionState == 'new') {
       throw ('no "connect" listener set into this transport');
@@ -1112,8 +1082,7 @@ class Transport extends EnhancedEventEmitter {
     _flexQueue.addTask(FlexTaskAdd(
         id: '',
         execFun: () async {
-          HandlerSendDataChannelResult sendDataResult =
-              await _handler.sendDataChannel(
+          HandlerSendDataChannelResult sendDataResult = await _handler.sendDataChannel(
             SendDataChannelArguments(
               ordered: ordered,
               maxPacketLifeTime: maxPacketLife,
@@ -1125,8 +1094,7 @@ class Transport extends EnhancedEventEmitter {
           );
 
           // This will fill sctpStreamParameters's missing fields with default values.
-          Ortc.validateAndNormalizeSctpStreamParameters(
-              sendDataResult.sctpStreamParameters);
+          Ortc.validateAndNormalizeSctpStreamParameters(sendDataResult.sctpStreamParameters);
 
           String id = await safeEmitAsFuture('producedata', {
             'sctpStreamParameters': sendDataResult.sctpStreamParameters,

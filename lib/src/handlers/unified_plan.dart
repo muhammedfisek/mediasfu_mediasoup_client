@@ -1091,13 +1091,21 @@ a=ice-pwd:$icePwd''';
       print('⚠️ setRemoteDescription failed (iOS flutter_webrtc bug): $e');
       // Don't throw - we'll handle this below
     }*/
-    if (Platform.isIOS) {
-      // 🔥 NUCLEAR BLOCK
-    } else {
-      // ✅ NORMAL FLOW
-      await _pc!.setRemoteDescription(offer);
-      print('✅ receive() setRemoteDescription successful - NORMAL FLOW ANDROID');
+    //////////// FSK /////    if (Platform.isIOS) {
+    //////////// FSK /////      // 🔥 NUCLEAR BLOCK
+    //////////// FSK /////    } else {
+    //////////// FSK /////      // ✅ NORMAL FLOW
+    //////////// FSK /////      await _pc!.setRemoteDescription(offer);
+    //////////// FSK /////      print('✅ receive() setRemoteDescription successful - NORMAL FLOW ANDROID');
+    //////////// FSK /////      setRemoteSuccess = true;
+    //////////// FSK /////    }
+    try {
+      await _pc!.setRemoteDescription(answer);
+      print('✅ setRemoteDescription successful');
       setRemoteSuccess = true;
+    } catch (e) {
+      print('❌ setRemoteDescription failed: $e');
+      // setRemoteSuccess zaten false, nuclear option devreye girecek
     }
 
     // 🔥 NUCLEAR OPTION: Skip setRemoteDescription for iOS send transport
