@@ -1,5 +1,7 @@
 // ignore_for_file: curly_braces_in_flow_control_structures, unnecessary_null_comparison, prefer_typing_uninitialized_variables, empty_catches
 
+import 'dart:io';
+
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:mediasfu_mediasoup_client/src/consumer.dart';
 import 'package:mediasfu_mediasoup_client/src/data_consumer.dart';
@@ -804,6 +806,54 @@ class Transport extends EnhancedEventEmitter {
     });
   }
 
+  RtpCodecCapability _vp8Codec() {
+    return RtpCodecCapability(
+      kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
+      mimeType: 'video/VP8',
+      preferredPayloadType: 96,
+      clockRate: 90000,
+      channels: 0,
+      parameters: {},
+      rtcpFeedback: [
+        RtcpFeedback(type: 'nack', parameter: ''),
+        RtcpFeedback(type: 'nack', parameter: 'pli'),
+        RtcpFeedback(type: 'ccm', parameter: 'fir'),
+        RtcpFeedback(type: 'transport-cc', parameter: ''),
+      ],
+    );
+  }
+
+  RtpCodecCapability _autoSelectCodec(MediaStreamTrack track) {
+    if (track.kind != 'video') return _h264Codec();
+
+    if (Platform.isIOS) {
+      return _vp8Codec();
+    }
+
+    return _h264Codec();
+  }
+
+  RtpCodecCapability _h264Codec() {
+    return RtpCodecCapability(
+      kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
+      mimeType: 'video/H264',
+      preferredPayloadType: 98,
+      clockRate: 90000,
+      channels: 0,
+      parameters: {
+        'packetization-mode': 1,
+        'level-asymmetry-allowed': 1,
+        'profile-level-id': '42e033',
+      },
+      rtcpFeedback: [
+        RtcpFeedback(type: 'nack', parameter: ''),
+        RtcpFeedback(type: 'nack', parameter: 'pli'),
+        RtcpFeedback(type: 'ccm', parameter: 'fir'),
+        RtcpFeedback(type: 'transport-cc', parameter: ''),
+      ],
+    );
+  }
+
   Future<void> _produce(ProduceArguments arguments) async {
     try {
       List<RtpEncodingParameters> normalizedEncodings = [];
@@ -846,11 +896,14 @@ class Transport extends EnhancedEventEmitter {
         }).toList();
       }
 
+      RtpCodecCapability codec = arguments.codec ?? _autoSelectCodec(arguments.track);
+      _logger.debug('🔥 Auto codec selected: ${codec!.mimeType}');
+
       HandlerSendResult sendResult = await _handler.send(HandlerSendOptions(
         track: arguments.track,
         encodings: normalizedEncodings,
         codecOptions: arguments.codecOptions,
-        codec: arguments.codec,
+        codec: codec,
         stream: arguments.stream,
       ));
 
