@@ -33,8 +33,7 @@ class Ortc {
   /// Validates RtpCodecCapability. It may modify given data by adding missing
   /// fields with default values.
   /// It throws if invalid.
-  static void validateAndNormalizeRtpCodecCapability(
-      RtpCodecCapability? codec) {
+  static void validateAndNormalizeRtpCodecCapability(RtpCodecCapability? codec) {
     RegExp mimeTypeRegex = RegExp(r"^(audio|video)/(.+)", caseSensitive: true);
 
     if (codec == null) {
@@ -46,16 +45,14 @@ class Ortc {
       throw ('missing codec.mimeType');
     }
 
-    Iterable<RegExpMatch> mimeTypeMatch =
-        mimeTypeRegex.allMatches(codec.mimeType);
+    Iterable<RegExpMatch> mimeTypeMatch = mimeTypeRegex.allMatches(codec.mimeType);
 
     if (mimeTypeMatch.isEmpty) {
       throw ('invalid codec.mimeType');
     }
 
     // Just override kind with media component of mimeType.
-    codec.kind = RTCRtpMediaTypeExtension.fromString(
-        mimeTypeMatch.elementAt(0).group(1)!.toLowerCase());
+    codec.kind = RTCRtpMediaTypeExtension.fromString(mimeTypeMatch.elementAt(0).group(1)!.toLowerCase());
 
     // // preferredPayloadType is optional.
     // if (codec.preferredPayloadType == null) {
@@ -123,8 +120,7 @@ class Ortc {
     //   ext.kind = ''
     // }
 
-    if (ext.kind != RTCRtpMediaType.RTCRtpMediaTypeAudio &&
-        ext.kind != RTCRtpMediaType.RTCRtpMediaTypeVideo) {
+    if (ext.kind != RTCRtpMediaType.RTCRtpMediaTypeAudio && ext.kind != RTCRtpMediaType.RTCRtpMediaTypeVideo) {
       throw ('invalid ext.kind');
     }
 
@@ -182,8 +178,7 @@ class Ortc {
   /// Validates RtpHeaderExtensionParameteters. It may modify given data by adding missing
   /// fields with default values.
   /// It throws if invalid.
-  static void validateRtpHeaderExtensionParameters(
-      RtpHeaderExtensionParameters? ext) {
+  static void validateRtpHeaderExtensionParameters(RtpHeaderExtensionParameters? ext) {
     if (ext == null) {
       throw ('ext is not an object');
     }
@@ -223,8 +218,7 @@ class Ortc {
   /// Validates RtpEncodingParameters. It may modify given data by adding missing
   /// fields with default values.
   /// It throws if invalid.
-  static void validateAndNormalizeRtpEncodingParameters(
-      RtpEncodingParameters encoding) {
+  static void validateAndNormalizeRtpEncodingParameters(RtpEncodingParameters encoding) {
     if (encoding.rtx != null) {
       if (encoding.rtx?.ssrc == null) {
         throw ('missing encoding.rtx.ssrc');
@@ -250,10 +244,8 @@ class Ortc {
   /// Validates RtpCodecParameters. It may modify given data by adding missing
   /// fields with default values.
   /// It throws if invalid.
-  static void validateAndNormalizeRtpCodecParameters(
-      RtpCodecParameters? codec) {
-    final RegExp mimeTypeRegex =
-        RegExp(r"^(audio|video)/(.+)", caseSensitive: true);
+  static void validateAndNormalizeRtpCodecParameters(RtpCodecParameters? codec) {
+    final RegExp mimeTypeRegex = RegExp(r"^(audio|video)/(.+)", caseSensitive: true);
 
     if (codec == null) {
       throw ('codec is not an object');
@@ -264,8 +256,7 @@ class Ortc {
     //   throw ('missing codec.mimeType');
     // }
 
-    final Iterable<RegExpMatch> mimeTypeMatch =
-        mimeTypeRegex.allMatches(codec.mimeType);
+    final Iterable<RegExpMatch> mimeTypeMatch = mimeTypeRegex.allMatches(codec.mimeType);
 
     // payloadType is mandatory.
     // if (codec.payloadType == null) {
@@ -277,8 +268,7 @@ class Ortc {
     //   throw ('missing codec.clockRate');
     // }
 
-    RTCRtpMediaType kind = RTCRtpMediaTypeExtension.fromString(
-        mimeTypeMatch.elementAt(0).group(1)!.toLowerCase());
+    RTCRtpMediaType kind = RTCRtpMediaTypeExtension.fromString(mimeTypeMatch.elementAt(0).group(1)!.toLowerCase());
 
     // channels is optional. If unset, set it to 1 (just if audio).
     if (kind == RTCRtpMediaType.RTCRtpMediaTypeAudio) {
@@ -426,8 +416,7 @@ class Ortc {
   /// Validates SctpStreamParameters. It may modify given data by adding missing
   /// fields with default values.
   /// It throws if invalid.
-  static void validateAndNormalizeSctpStreamParameters(
-      SctpStreamParameters? params) {
+  static void validateAndNormalizeSctpStreamParameters(SctpStreamParameters? params) {
     if (params == null) {
       throw ('params is not an object');
     }
@@ -450,12 +439,9 @@ class Ortc {
     //   throw ('cannot provide both maxPacketLife and maxRetransmits');
     // }
 
-    if (orderedGiven &&
-        params.ordered == true &&
-        (params.maxPacketLifeTime != null || params.maxRetransmits != null)) {
+    if (orderedGiven && params.ordered == true && (params.maxPacketLifeTime != null || params.maxRetransmits != null)) {
       throw ('cannot be ordered with maxPacketLifeTime or maxRetransmits');
-    } else if (!orderedGiven &
-        (params.maxPacketLifeTime != null || params.maxRetransmits != null)) {
+    } else if (!orderedGiven & (params.maxPacketLifeTime != null || params.maxRetransmits != null)) {
       params.ordered = false;
     }
   }
@@ -502,16 +488,14 @@ class Ortc {
 
           // If strict matching check profile-level-id.
           if (strict) {
-            if (!H264Utils.isSameProfile(
-                aCodec.parameters, bCodec.parameters)) {
+            if (!H264Utils.isSameProfile(aCodec.parameters, bCodec.parameters)) {
               return false;
             }
 
             String? selectedProfileLevelId;
 
             try {
-              selectedProfileLevelId =
-                  H264Utils.generateProfileLevelIdForAnswer(
+              selectedProfileLevelId = H264Utils.generateProfileLevelIdForAnswer(
                 local_supported_params: aCodec.parameters,
                 remote_offered_params: bCodec.parameters,
               );
@@ -550,16 +534,13 @@ class Ortc {
     return true;
   }
 
-  static List<RtcpFeedback> reduceRtcpFeedback(
-      RtpCodecCapability codecA, RtpCodecCapability codecB) {
+  static List<RtcpFeedback> reduceRtcpFeedback(RtpCodecCapability codecA, RtpCodecCapability codecB) {
     List<RtcpFeedback> reducedRtcpFeedback = <RtcpFeedback>[];
 
     for (RtcpFeedback aFb in codecA.rtcpFeedback) {
       RtcpFeedback? matchingBFb = codecB.rtcpFeedback.firstWhereOrNull(
         (RtcpFeedback bFb) =>
-            bFb.type == aFb.type &&
-            (bFb.parameter == aFb.parameter ||
-                (bFb.parameter == '' && aFb.parameter == '')),
+            bFb.type == aFb.type && (bFb.parameter == aFb.parameter || (bFb.parameter == '' && aFb.parameter == '')),
       );
 
       if (matchingBFb != null) {
@@ -590,8 +571,7 @@ class Ortc {
     RtpCapabilities localCaps,
     RtpCapabilities remoteCaps,
   ) {
-    final ExtendedRtpCapabilities extendedRtpCapabilities =
-        ExtendedRtpCapabilities(
+    final ExtendedRtpCapabilities extendedRtpCapabilities = ExtendedRtpCapabilities(
       codecs: [],
       headerExtensions: [],
     );
@@ -602,13 +582,9 @@ class Ortc {
         continue;
       }
 
-      final RtpCodecCapability? matchingLocalCodec =
-          localCaps.codecs.firstWhereOrNull(
-        (RtpCodecCapability localCodec) => matchCodecs(
-            aCodec: localCodec,
-            bCodec: remoteCodec,
-            strict: true,
-            modify: true),
+      final RtpCodecCapability? matchingLocalCodec = localCaps.codecs.firstWhereOrNull(
+        (RtpCodecCapability localCodec) =>
+            matchCodecs(aCodec: localCodec, bCodec: remoteCodec, strict: false, modify: true),
       );
 
       if (matchingLocalCodec == null) {
@@ -634,34 +610,26 @@ class Ortc {
 
     // Match RTX codecs.
     for (ExtendedRtpCodec extendedCodec in extendedRtpCapabilities.codecs) {
-      RtpCodecCapability? matchingLocalRtxCodec =
-          localCaps.codecs.firstWhereOrNull(
+      RtpCodecCapability? matchingLocalRtxCodec = localCaps.codecs.firstWhereOrNull(
         (RtpCodecCapability localCodec) =>
-            isRtxCodec(localCodec) &&
-            localCodec.parameters['apt'] == extendedCodec.localPayloadType,
+            isRtxCodec(localCodec) && localCodec.parameters['apt'] == extendedCodec.localPayloadType,
       );
 
-      final RtpCodecCapability? matchingRemoteRtxCodec =
-          remoteCaps.codecs.firstWhereOrNull(
+      final RtpCodecCapability? matchingRemoteRtxCodec = remoteCaps.codecs.firstWhereOrNull(
         (RtpCodecCapability remoteCodec) =>
-            isRtxCodec(remoteCodec) &&
-            remoteCodec.parameters['apt'] == extendedCodec.remotePayloadType,
+            isRtxCodec(remoteCodec) && remoteCodec.parameters['apt'] == extendedCodec.remotePayloadType,
       );
 
       if (matchingLocalRtxCodec != null && matchingRemoteRtxCodec != null) {
-        extendedCodec.localRtxPayloadType =
-            matchingLocalRtxCodec.preferredPayloadType;
-        extendedCodec.remoteRtxPayloadType =
-            matchingRemoteRtxCodec.preferredPayloadType;
+        extendedCodec.localRtxPayloadType = matchingLocalRtxCodec.preferredPayloadType;
+        extendedCodec.remoteRtxPayloadType = matchingRemoteRtxCodec.preferredPayloadType;
       }
     }
 
     // Match header extensions.
     for (RtpHeaderExtension remoteExt in remoteCaps.headerExtensions) {
-      final RtpHeaderExtension? matchingLocalExt =
-          localCaps.headerExtensions.firstWhereOrNull(
-        (RtpHeaderExtension localExt) =>
-            matchHeaderExtensions(localExt, remoteExt),
+      final RtpHeaderExtension? matchingLocalExt = localCaps.headerExtensions.firstWhereOrNull(
+        (RtpHeaderExtension localExt) => matchHeaderExtensions(localExt, remoteExt),
       );
 
       if (matchingLocalExt == null) {
@@ -813,8 +781,7 @@ class Ortc {
       }
     }
 
-    for (ExtendedRtpHeaderExtension extendedExtension
-        in extendedRtpCapabilities.headerExtensions) {
+    for (ExtendedRtpHeaderExtension extendedExtension in extendedRtpCapabilities.headerExtensions) {
       // Ignore RTP extensions of a different kind and those not valid for sending.
       if ((extendedExtension.kind != kind) ||
           (extendedExtension.direction != RtpHeaderDirection.SendRecv &&
@@ -834,28 +801,19 @@ class Ortc {
 
     // Reduce codecs' RTCP feedback. Use Transport-CC if available, REMB otherwise.
     if (rtpParameters.headerExtensions.any((RtpHeaderExtensionParameters ext) =>
-        ext.uri ==
-        'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01')) {
+        ext.uri == 'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01')) {
       for (RtpCodecParameters codec in rtpParameters.codecs) {
-        codec.rtcpFeedback = codec.rtcpFeedback
-            .where((RtcpFeedback fb) => fb.type != 'goog-remb')
-            .toList();
+        codec.rtcpFeedback = codec.rtcpFeedback.where((RtcpFeedback fb) => fb.type != 'goog-remb').toList();
       }
-    } else if (rtpParameters.headerExtensions.any(
-        (RtpHeaderExtensionParameters ext) =>
-            ext.uri ==
-            'http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time')) {
+    } else if (rtpParameters.headerExtensions.any((RtpHeaderExtensionParameters ext) =>
+        ext.uri == 'http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time')) {
       for (RtpCodecParameters codec in rtpParameters.codecs) {
-        codec.rtcpFeedback = codec.rtcpFeedback
-            .where((RtcpFeedback fb) => fb.type != 'transport-cc')
-            .toList();
+        codec.rtcpFeedback = codec.rtcpFeedback.where((RtcpFeedback fb) => fb.type != 'transport-cc').toList();
       }
     } else {
       for (RtpCodecParameters codec in rtpParameters.codecs) {
-        codec.rtcpFeedback = codec.rtcpFeedback
-            .where((RtcpFeedback fb) =>
-                fb.type != 'transport-cc' && fb.type != 'goog-remb')
-            .toList();
+        codec.rtcpFeedback =
+            codec.rtcpFeedback.where((RtcpFeedback fb) => fb.type != 'transport-cc' && fb.type != 'goog-remb').toList();
       }
     }
 
@@ -864,8 +822,7 @@ class Ortc {
 
   /// Generate RTP capabilities for receiving media based on the given extended
   /// RTP capabilities.
-  static RtpCapabilities getRecvRtpCapabilities(
-      ExtendedRtpCapabilities extendedRtpCapabilities) {
+  static RtpCapabilities getRecvRtpCapabilities(ExtendedRtpCapabilities extendedRtpCapabilities) {
     RtpCapabilities rtpCapabilities = RtpCapabilities(
       codecs: [],
       headerExtensions: [],
@@ -905,8 +862,7 @@ class Ortc {
 
     //-TODO: In the future, we need to add FEC, CN, etc, codecs.
 
-    for (ExtendedRtpHeaderExtension extendedExtension
-        in extendedRtpCapabilities.headerExtensions) {
+    for (ExtendedRtpHeaderExtension extendedExtension in extendedRtpCapabilities.headerExtensions) {
       // Ignore RTP extensions not valid for receiving.
       if (extendedExtension.direction != RtpHeaderDirection.SendRecv &&
           extendedExtension.direction != RtpHeaderDirection.RecvOnly) {
@@ -973,8 +929,7 @@ class Ortc {
       }
     }
 
-    for (ExtendedRtpHeaderExtension extendedExtension
-        in extendedRtpCapabilities.headerExtensions) {
+    for (ExtendedRtpHeaderExtension extendedExtension in extendedRtpCapabilities.headerExtensions) {
       // Ignore RTP extensions of a different kind and those not valid for sending.
       if ((extendedExtension.kind != kind) ||
           (extendedExtension.direction != RtpHeaderDirection.SendRecv &&
@@ -996,10 +951,8 @@ class Ortc {
   }
 
   /// Whether media can be sent based on the given RTP capabilities.
-  static bool canSend(
-      RTCRtpMediaType kind, ExtendedRtpCapabilities extendedRtpCapabilities) {
-    return extendedRtpCapabilities.codecs
-        .any((ExtendedRtpCodec codec) => codec.kind == kind);
+  static bool canSend(RTCRtpMediaType kind, ExtendedRtpCapabilities extendedRtpCapabilities) {
+    return extendedRtpCapabilities.codecs.any((ExtendedRtpCodec codec) => codec.kind == kind);
   }
 
   /// Whether the given RTP parameters can be received with the given RTP
@@ -1017,8 +970,8 @@ class Ortc {
 
     RtpCodecParameters firstMediaCodec = rtpParameters.codecs.first;
 
-    return extendedRtpCapabilities?.codecs.any((ExtendedRtpCodec codec) =>
-            codec.remotePayloadType == firstMediaCodec.payloadType) ??
+    return extendedRtpCapabilities?.codecs
+            .any((ExtendedRtpCodec codec) => codec.remotePayloadType == firstMediaCodec.payloadType) ??
         false;
   }
 }

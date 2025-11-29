@@ -806,53 +806,6 @@ class Transport extends EnhancedEventEmitter {
     });
   }
 
-  RtpCodecCapability _vp8Codec() {
-    return RtpCodecCapability(
-      kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
-      mimeType: 'video/VP8',
-      preferredPayloadType: 96,
-      clockRate: 90000,
-      channels: 0,
-      parameters: {},
-      rtcpFeedback: [
-        RtcpFeedback(type: 'nack', parameter: ''),
-        RtcpFeedback(type: 'nack', parameter: 'pli'),
-        RtcpFeedback(type: 'ccm', parameter: 'fir'),
-        RtcpFeedback(type: 'transport-cc', parameter: ''),
-      ],
-    );
-  }
-
-  RtpCodecCapability _autoSelectCodec(MediaStreamTrack track) {
-    final String kindStr = track.kind!;
-    final kind = RTCRtpMediaTypeExtension.fromString(kindStr);
-
-    final ExtendedRtpCodec ext = _extendedRtpCapabilities!.codecs.firstWhere(
-      (c) => c.kind == kind,
-      orElse: () => throw 'no matching codec found',
-    );
-
-    // Producer için payloadType = remotePayloadType
-    int? pt = ext.remotePayloadType ?? ext.localPayloadType;
-
-    // 🔥 Router’a göre zorunlu payloadType düzelt
-    if (kind == RTCRtpMediaType.RTCRtpMediaTypeVideo) {
-      pt = 101; // ROUTER PAYLOAD TYPE (H264)
-    } else if (kind == RTCRtpMediaType.RTCRtpMediaTypeAudio) {
-      pt = 100; // ROUTER PAYLOAD TYPE (OPUS)
-    }
-
-    return RtpCodecCapability(
-      kind: ext.kind,
-      mimeType: ext.mimeType,
-      clockRate: ext.clockRate,
-      channels: ext.channels ?? 1,
-      preferredPayloadType: pt,
-      parameters: ext.remoteParameters ?? {},
-      rtcpFeedback: ext.rtcpFeedback,
-    );
-  }
-
   RtpCodecCapability _h264Codec() {
     return RtpCodecCapability(
       kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
@@ -916,14 +869,13 @@ class Transport extends EnhancedEventEmitter {
         }).toList();
       }
 
-      RtpCodecCapability codec = arguments.codec ?? _autoSelectCodec(arguments.track);
-      _logger.debug('🔥 Auto codec selected: ${codec!.mimeType}');
+      _logger.debug('🔥 codec selected: ${arguments.codec}');
 
       HandlerSendResult sendResult = await _handler.send(HandlerSendOptions(
         track: arguments.track,
         encodings: normalizedEncodings,
         codecOptions: arguments.codecOptions,
-        codec: codec,
+        codec: arguments.codec,
         stream: arguments.stream,
       ));
 
