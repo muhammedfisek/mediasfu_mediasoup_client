@@ -869,7 +869,7 @@ class Transport extends EnhancedEventEmitter {
         }).toList();
       }
 
-      _logger.debug('🔥 codec selected: ${arguments.codec}');
+      print('TRANSPORT: 🔥 codec selected: ${arguments.codec}');
 
       HandlerSendResult sendResult = await _handler.send(HandlerSendOptions(
         track: arguments.track,
@@ -943,7 +943,7 @@ class Transport extends EnhancedEventEmitter {
     Map<String, dynamic> appData = const <String, dynamic>{},
     required String source,
   }) {
-    _logger.debug('produce() [track:${track.toString()}');
+    print('TRANSPORT: produce() [track:${track.toString()}');
 
     if (_direction != Direction.send) {
       throw ('not a sending Transport');
