@@ -271,6 +271,8 @@ class UnifiedPlan extends HandlerInterface {
 
       try {
         localOffer = await _pc!.createOffer({});
+        print('UnifiedPlan-offer274: ${localOffer.toMap()}');
+
         await _pc!.setLocalDescription(localOffer);
         print('   ✅ Local offer created (state: have-local-offer)');
 
@@ -585,7 +587,7 @@ a=ice-pwd:$icePwd''';
     }
 
     // // 'receive() | calling pc.setLocalDescription() [answer:${answer.toMap()}]');
-
+    print('UnifiedPlan-answer590: ${answer.toMap()}');
     await _pc!.setLocalDescription(answer);
 
     final transceivers = await _pc!.getTransceivers();
@@ -676,7 +678,7 @@ a=ice-pwd:$icePwd''';
 
       // 'receiveDataChannel() | calling pc.setRemoteDescription() [answer: ${answer.toMap()}');
 
-      print('UnifiedPlan-answer: ${answer.toMap()}');
+      print('UnifiedPlan-answer681: ${answer.toMap()}');
       await _pc!.setLocalDescription(answer);
 
       _hasDataChannelMediaSection = true;
@@ -713,6 +715,7 @@ a=ice-pwd:$icePwd''';
 
       // // 'restartIce() | calling pc.setLocalDescription() [offer:${offer.toMap()}]');
 
+      print('UnifiedPlan-offer718: ${offer.toMap()}');
       await _pc!.setLocalDescription(offer);
 
       RTCSessionDescription answer = RTCSessionDescription(_remoteSdp.getSdp(), 'answer');
@@ -731,6 +734,7 @@ a=ice-pwd:$icePwd''';
 
       // // 'restartIce() | calling pc.setLocalDescription() [answer:${answer.toMap()}]');
 
+      print('UnifiedPlan-answer735: ${answer.toMap()}');
       await _pc!.setLocalDescription(answer);
     }
   }
@@ -906,6 +910,7 @@ a=ice-pwd:$icePwd''';
       offer = RTCSessionDescription(write(localSdpObject.toMap(), null), 'offer');
     }
 
+    print('UnifiedPlan-offer911: ${offer.toMap()}');
     await _pc!.setLocalDescription(offer);
 
     if (!kIsWeb) {
@@ -1171,6 +1176,7 @@ a=ice-pwd:$icePwd''';
 
       // 'sendDataChannel() | calling pc.setLocalDescription() [offer:${offer.toMap()}');
 
+      print('UnifiedPlan-offer1177: ${offer.toMap()}');
       await _pc!.setLocalDescription(offer);
 
       _remoteSdp.sendSctpAssociation(offerMediaObject!);
@@ -1289,6 +1295,7 @@ a=ice-pwd:$icePwd''';
 
     // 'stopReceiving() | calling pc.setLocalDescription() [answer:${answer.toMap()}');
 
+    print('UnifiedPlan-answer1291: ${answer.toMap()}');
     await _pc!.setLocalDescription(answer);
     _mapMidTransceiver.remove(localId);
   }
@@ -1311,6 +1318,7 @@ a=ice-pwd:$icePwd''';
 
     // 'stopSending() | calling pc.setLocalDescription() [offer:${offer.toMap()}');
 
+    print('UnifiedPlan-offer1319: ${offer.toMap()}');
     await _pc!.setLocalDescription(offer);
 
     RTCSessionDescription answer = RTCSessionDescription(_remoteSdp.getSdp(), 'answer');
